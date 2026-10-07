@@ -1,0 +1,39 @@
+{
+  "name": "stocksmart-front",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:mock": "vite --mode mock",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "api:types": "npx -y -p typescript@5 -p openapi-typescript@7 openapi-typescript openapi/openapi.json -o src/api/schema.d.ts",
+    "api:pull": "node scripts/pull-openapi.mjs && npm run api:types",
+    "test": "vitest run --mode mock"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.1",
+    "openapi-fetch": "^0.17.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^8.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "msw": "^3.0.2",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.3"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

@@ -1,0 +1,1844 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "StockSmart inventory API",
+    "description": "Backend-only P1–P5 API. Prices, suppliers, orders and pilot metrics are outside this slice.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/items": {
+      "post": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Create Item",
+        "description": "Create an item and its non-backdated initial stock in one transaction.",
+        "operationId": "create_item_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemStateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}": {
+      "get": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Get Item",
+        "description": "Stock, consumption, forecast, alert and base-unit replenishment need.",
+        "operationId": "get_item_items__item_id__get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemStateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/initial-stock": {
+      "post": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Replace Initial",
+        "description": "Start a new observation after the previous initial stock was validly reversed.",
+        "operationId": "replace_initial_items__item_id__initial_stock_post",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitialStockCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item or movement not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Business rule conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/safe-stock": {
+      "put": {
+        "tags": [
+          "items"
+        ],
+        "summary": "Update Safe Stock",
+        "description": "A null value removes the manual override and restores dynamic P5 behavior.",
+        "operationId": "update_safe_stock_items__item_id__safe_stock_put",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SafeStockUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemStateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movements": {
+      "post": {
+        "tags": [
+          "movements"
+        ],
+        "summary": "Create Movement",
+        "description": "Post an entry or exit; backdated events are checked against the full ledger and counts.",
+        "operationId": "create_movement_movements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item or movement not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Business rule conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movements/{movement_id}/reverse": {
+      "post": {
+        "tags": [
+          "movements"
+        ],
+        "summary": "Reverse Movement",
+        "description": "Exact inverse only when the effective history remains valid (D1/D6).",
+        "operationId": "reverse_movement_movements__movement_id__reverse_post",
+        "parameters": [
+          {
+            "name": "movement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movement Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item or movement not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Business rule conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movements/{movement_id}/corrections": {
+      "post": {
+        "tags": [
+          "movements"
+        ],
+        "summary": "Create Correction",
+        "description": "Record a present D6 correction with its signed base-unit stock effect.",
+        "operationId": "create_correction_movements__movement_id__corrections_post",
+        "parameters": [
+          {
+            "name": "movement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Movement Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item or movement not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Business rule conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/counts": {
+      "post": {
+        "tags": [
+          "counts"
+        ],
+        "summary": "Create Count",
+        "description": "Atomically reconcile theoretical and physical stock; optionally link a correction.",
+        "operationId": "create_count_counts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item or movement not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Business rule conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/movements": {
+      "get": {
+        "tags": [
+          "movements"
+        ],
+        "summary": "List Movements",
+        "description": "Read-only movement audit trail; there is no edit or delete endpoint.",
+        "operationId": "list_movements_items__item_id__movements_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MovementResponse"
+                  },
+                  "title": "Response List Movements Items  Item Id  Movements Get"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/counts": {
+      "get": {
+        "tags": [
+          "counts"
+        ],
+        "summary": "List Counts",
+        "description": "Read-only confirmed physical counts.",
+        "operationId": "list_counts_items__item_id__counts_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CountResponse"
+                  },
+                  "title": "Response List Counts Items  Item Id  Counts Get"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/consumption": {
+      "get": {
+        "tags": [
+          "forecast"
+        ],
+        "summary": "Consumption And Forecast",
+        "description": "Return the same consistent snapshot as GET /items/{id}.",
+        "operationId": "consumption_and_forecast_items__item_id__consumption_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemStateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/alert": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "Item Alert",
+        "description": "Current P5 alert; may be INSUFFICIENT_HISTORY.",
+        "operationId": "item_alert_items__item_id__alert_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts": {
+      "get": {
+        "tags": [
+          "alerts"
+        ],
+        "summary": "List Alerts",
+        "description": "Currently active low-stock alerts. Use the item alert route for other states.",
+        "operationId": "list_alerts_alerts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Alerts Alerts Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/items/{item_id}/shortage-rate": {
+      "get": {
+        "tags": [
+          "counts"
+        ],
+        "summary": "Item Shortage Rate",
+        "description": "P3 rate for a caller-selected comparable period, without pilot metrics.",
+        "operationId": "item_shortage_rate_items__item_id__shortage_rate_get",
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Item Id"
+            }
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Inclusive, timezone-aware",
+              "title": "Start"
+            },
+            "description": "Inclusive, timezone-aware"
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Exclusive, timezone-aware",
+              "title": "End"
+            },
+            "description": "Exclusive, timezone-aware"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortageRateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Item not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health",
+        "description": "Reports healthy only when PostgreSQL is reachable.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "503": {
+            "description": "PostgreSQL unavailable",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "unavailable"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AlertResponse": {
+        "properties": {
+          "item_id": {
+            "type": "integer",
+            "title": "Item Id"
+          },
+          "current_stock": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Current Stock"
+          },
+          "safe_stock": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safe Stock"
+          },
+          "alert_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Source"
+          },
+          "alert_status": {
+            "type": "string",
+            "title": "Alert Status"
+          },
+          "is_low_stock": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Low Stock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "item_id",
+          "current_stock",
+          "safe_stock",
+          "alert_source",
+          "alert_status",
+          "is_low_stock"
+        ],
+        "title": "AlertResponse"
+      },
+      "AssessmentResponse": {
+        "properties": {
+          "safe_stock": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safe Stock"
+          },
+          "alert_source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "MANUAL_THRESHOLD",
+                  "AUTOMATIC"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Source"
+          },
+          "alert_status": {
+            "type": "string",
+            "enum": [
+              "LOW_STOCK",
+              "OK",
+              "INSUFFICIENT_HISTORY"
+            ],
+            "title": "Alert Status"
+          },
+          "is_low_stock": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Low Stock"
+          },
+          "target_stock": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Stock"
+          },
+          "suggested_quantity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Quantity"
+          },
+          "daily_average": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Average"
+          },
+          "remaining_days": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Days"
+          },
+          "depletion_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depletion At"
+          },
+          "depletion_status": {
+            "type": "string",
+            "enum": [
+              "INSUFFICIENT_HISTORY",
+              "ZERO_CONSUMPTION",
+              "PROJECTED",
+              "OUT_OF_RANGE"
+            ],
+            "title": "Depletion Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "safe_stock",
+          "alert_source",
+          "alert_status",
+          "is_low_stock",
+          "target_stock",
+          "suggested_quantity",
+          "daily_average",
+          "remaining_days",
+          "depletion_at",
+          "depletion_status"
+        ],
+        "title": "AssessmentResponse"
+      },
+      "ConsumptionResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "INSUFFICIENT_HISTORY",
+              "PRELIMINARY",
+              "ESTABLISHED"
+            ],
+            "title": "Status"
+          },
+          "complete_days": {
+            "type": "integer",
+            "title": "Complete Days"
+          },
+          "observed_quantity": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Observed Quantity"
+          },
+          "weekly_average": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Average"
+          },
+          "window_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Start"
+          },
+          "window_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "complete_days",
+          "observed_quantity",
+          "weekly_average",
+          "window_start",
+          "window_end"
+        ],
+        "title": "ConsumptionResponse"
+      },
+      "CorrectionCreate": {
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Note",
+            "examples": [
+              "Salida duplicada; conteo posterior ya la absorbió"
+            ]
+          },
+          "stock_effect": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Stock Effect",
+            "description": "Signed effect in the item's base unit, applied now. Zero documents an error already absorbed by a count; a nonzero value corrects only current stock.",
+            "default": "0",
+            "examples": [
+              "0",
+              "2",
+              "-1"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "note"
+        ],
+        "title": "CorrectionCreate"
+      },
+      "CountCreate": {
+        "properties": {
+          "item_id": {
+            "type": "integer",
+            "title": "Item Id"
+          },
+          "physical_quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Physical Quantity",
+            "examples": [
+              "22"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "examples": [
+              "kg"
+            ]
+          },
+          "cause": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "vencimiento",
+                  "deterioro",
+                  "error de registro",
+                  "desconocida",
+                  "otra"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause"
+          },
+          "corrects_movement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Movement Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "item_id",
+          "physical_quantity",
+          "unit"
+        ],
+        "title": "CountCreate"
+      },
+      "CountResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "item_id": {
+            "type": "integer",
+            "title": "Item Id"
+          },
+          "adjustment_movement_id": {
+            "type": "integer",
+            "title": "Adjustment Movement Id"
+          },
+          "corrects_movement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrects Movement Id"
+          },
+          "theoretical_before": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Theoretical Before"
+          },
+          "physical_stock": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Physical Stock"
+          },
+          "difference": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Difference"
+          },
+          "shortage": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shortage"
+          },
+          "cause": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_id",
+          "adjustment_movement_id",
+          "corrects_movement_id",
+          "theoretical_before",
+          "physical_stock",
+          "difference",
+          "shortage",
+          "cause",
+          "occurred_at",
+          "created_at"
+        ],
+        "title": "CountResponse"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ValidationIssue"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorDetail"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse"
+      },
+      "InitialStockCreate": {
+        "properties": {
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "quantity",
+          "unit"
+        ],
+        "title": "InitialStockCreate"
+      },
+      "ItemCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "examples": [
+              "Azúcar blanca"
+            ]
+          },
+          "base_unit": {
+            "type": "string",
+            "enum": [
+              "kg",
+              "L",
+              "unidad"
+            ],
+            "title": "Base Unit"
+          },
+          "initial_quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Initial Quantity",
+            "examples": [
+              "25"
+            ]
+          },
+          "initial_unit": {
+            "type": "string",
+            "title": "Initial Unit",
+            "examples": [
+              "kg"
+            ]
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone",
+            "default": "America/Santiago",
+            "examples": [
+              "America/Santiago"
+            ]
+          },
+          "manual_safe_stock": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Safe Stock"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "base_unit",
+          "initial_quantity",
+          "initial_unit"
+        ],
+        "title": "ItemCreate"
+      },
+      "ItemStateResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "base_unit": {
+            "type": "string",
+            "enum": [
+              "kg",
+              "L",
+              "unidad"
+            ],
+            "title": "Base Unit"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "current_stock": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Current Stock"
+          },
+          "manual_safe_stock": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Safe Stock"
+          },
+          "observation_started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Started At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "consumption": {
+            "$ref": "#/components/schemas/ConsumptionResponse"
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/AssessmentResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "base_unit",
+          "timezone",
+          "current_stock",
+          "manual_safe_stock",
+          "observation_started_at",
+          "created_at",
+          "updated_at",
+          "consumption",
+          "assessment"
+        ],
+        "title": "ItemStateResponse"
+      },
+      "MovementCreate": {
+        "properties": {
+          "item_id": {
+            "type": "integer",
+            "title": "Item Id"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ENTRY",
+              "EXIT"
+            ],
+            "title": "Kind"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              }
+            ],
+            "title": "Quantity",
+            "examples": [
+              "3"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit",
+            "examples": [
+              "kg"
+            ]
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At",
+            "description": "Actual occurrence time; omitted means now. Timezone-aware."
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "item_id",
+          "kind",
+          "quantity",
+          "unit"
+        ],
+        "title": "MovementCreate"
+      },
+      "MovementResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "item_id": {
+            "type": "integer",
+            "title": "Item Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "delta": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Delta"
+          },
+          "input_quantity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Quantity"
+          },
+          "input_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Unit"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "invalidates_movement_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidates Movement Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "item_id",
+          "kind",
+          "delta",
+          "input_quantity",
+          "input_unit",
+          "occurred_at",
+          "created_at",
+          "invalidates_movement_id",
+          "note"
+        ],
+        "title": "MovementResponse"
+      },
+      "ReverseCreate": {
+        "properties": {
+          "occurred_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReverseCreate"
+      },
+      "SafeStockUpdate": {
+        "properties": {
+          "manual_safe_stock": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Safe Stock",
+            "description": "Set a nonnegative manual threshold; null restores the automatic threshold."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "manual_safe_stock"
+        ],
+        "title": "SafeStockUpdate"
+      },
+      "ShortageRateResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "CALCULABLE",
+              "NOT_CALCULABLE"
+            ],
+            "title": "Status"
+          },
+          "available": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available"
+          },
+          "shortage": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Shortage"
+          },
+          "rate_percent": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Percent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "available",
+          "shortage",
+          "rate_percent"
+        ],
+        "title": "ShortageRateResponse"
+      },
+      "ValidationIssue": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Loc"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "message",
+          "type"
+        ],
+        "title": "ValidationIssue"
+      }
+    }
+  }
+}
