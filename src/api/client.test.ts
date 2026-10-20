@@ -1,6 +1,6 @@
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { buildLedger } from '../lib/ledger'
+import { buildLedger, formatMovementNote } from '../lib/ledger'
 import { handlers, resetMockDb } from '../mocks/handlers'
 import { api, setAccessToken, unwrap } from './client'
 import { ApiError } from './errors'
@@ -201,5 +201,17 @@ describe('historial', () => {
       [1, 10],
     ])
     expect(ledger.find((row) => row.id === 2)!.invalidated).toBe(true)
+    const rawReceipt =
+      'E2_RECEIPT:{"approved_at":"2026-09-30T12:05:00+00:00","base_unit":"kg","order_code":"OC-E2-0015","order_id":"OC-E2-0015","receipt_id":"RCP-E2-0015"}'
+    expect(formatMovementNote(rawReceipt)).toBe('Recepción OC-E2-0015')
+    expect(formatMovementNote('E2_RECEIPT:{"receipt_id":"RCP-E2-0007"}')).toBe('Recepción RCP-E2-0007')
+    expect(formatMovementNote('E2_RECEIPT:{}')).toBe('—')
+    expect(formatMovementNote('E2_RECEIPT:{invalid')).toBe('—')
+    expect(formatMovementNote('Order receipt OC-0013')).toBe('Recepción OC-0013')
+    expect(formatMovementNote('Recepción OC-0013')).toBe('Recepción OC-0013')
+    expect(formatMovementNote('SYNTHETIC_E2_TEST_DATA_NOT_A_REAL_BUSINESS; Dataset_v2 sha256=abc')).toBe('—')
+    expect(formatMovementNote('Consumo cocina')).toBe('Consumo cocina')
+    expect(formatMovementNote(null)).toBe('—')
+    expect(formatMovementNote('   ')).toBe('—')
   })
 })

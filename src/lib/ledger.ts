@@ -10,6 +10,38 @@ export interface LedgerRow extends Movement {
   invalidated: boolean
 }
 
+const E2_RECEIPT_PREFIX = 'E2_RECEIPT:'
+const LEGACY_ORDER_RECEIPT_PREFIX = 'Order receipt '
+const SYNTHETIC_NOTE_PREFIX = 'SYNTHETIC_E2_TEST_DATA_NOT_A_REAL_BUSINESS'
+
+/** Formatea notas técnicas de recepción o del dataset para mostrar un detalle breve al usuario. */
+export function formatMovementNote(note: string | null | undefined): string {
+  if (!note) return '—'
+  const cleaned = note.trim()
+  if (!cleaned || cleaned.startsWith(SYNTHETIC_NOTE_PREFIX)) return '—'
+  if (cleaned.startsWith(E2_RECEIPT_PREFIX)) {
+    try {
+      const payload = JSON.parse(cleaned.slice(E2_RECEIPT_PREFIX.length)) as Record<string, unknown>
+      if (payload && typeof payload === 'object') {
+        for (const key of ['order_code', 'receipt_id', 'order_id']) {
+          const value = payload[key]
+          if (value !== undefined && value !== null && String(value).trim()) {
+            return `Recepción ${String(value).trim()}`
+          }
+        }
+      }
+    } catch {
+      return '—'
+    }
+    return '—'
+  }
+  if (cleaned.startsWith(LEGACY_ORDER_RECEIPT_PREFIX)) {
+    const code = cleaned.slice(LEGACY_ORDER_RECEIPT_PREFIX.length).trim()
+    return code ? `Recepción ${code}` : '—'
+  }
+  return cleaned
+}
+
 /** Orden de ocurrencia del backend: (occurred_at, created_at, id). Compara instantes, no textos. */
 export function byOccurrence(a: Movement, b: Movement): number {
   return (

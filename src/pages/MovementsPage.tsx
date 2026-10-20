@@ -13,7 +13,7 @@ import {
   UNIT_LABEL,
   UNITS_BY_BASE,
 } from '../lib/format'
-import { buildLedger, type LedgerRow } from '../lib/ledger'
+import { buildLedger, formatMovementNote, type LedgerRow } from '../lib/ledger'
 import { MOVEMENT_KIND } from '../lib/labels'
 import { useSelectedItem } from '../state/useSelectedItem'
 
@@ -280,5 +280,5 @@ function detail(row: LedgerRow, unit: string): string {
     return 'Sin diferencias'
   }
   if (row.invalidates_movement_id) return `Anula el movimiento #${row.invalidates_movement_id}`
-  return row.note || '—'
+  return formatMovementNote(row.note)
 }
