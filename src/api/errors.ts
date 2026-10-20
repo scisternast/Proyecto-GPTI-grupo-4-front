@@ -2,6 +2,11 @@ import type { ErrorBody } from './types'
 
 // El backend responde los errores en inglés; el frontend los traduce por `code`.
 const MESSAGES: Record<string, string> = {
+  UNAUTHENTICATED: 'El correo o la contraseña no son válidos, o la sesión venció.',
+  FORBIDDEN: 'Tu cuenta no tiene permiso para realizar esta acción.',
+  LOGIN_THROTTLED: 'Demasiados intentos de acceso. Espera 15 minutos antes de volver a intentar.',
+  ORDER_RECEIPT_IMMUTABLE: 'Este movimiento corresponde a una recepción de orden y no se puede reversar aquí.',
+  HTTP_503: 'El servidor no está disponible. Vuelve a intentarlo en unos momentos.',
   ALREADY_CORRECTED: 'Este movimiento ya fue reversado o corregido.',
   AMOUNT_OUT_OF_RANGE: 'La cantidad es demasiado grande.',
   AMOUNT_PRECISION: 'La cantidad admite como máximo seis decimales en la unidad base.',
@@ -39,8 +44,8 @@ export class ApiError extends Error {
   readonly body: ErrorBody | undefined
 
   constructor(status: number, body: ErrorBody | undefined, fallbackCode = 'UNKNOWN') {
-    const code = body?.error.code ?? fallbackCode
-    super(MESSAGES[code] ?? body?.error.message ?? `Error inesperado (${status}).`)
+    const code = body?.error?.code ?? fallbackCode
+    super(MESSAGES[code] ?? body?.error?.message ?? `Error inesperado (${status}).`)
     this.name = 'ApiError'
     this.status = status
     this.code = code

@@ -2,8 +2,14 @@
 // pero NO replica las reglas del backend (consumo, proyección, D1–D7): solo sirve para
 // avanzar pantallas sin PostgreSQL. Los datos se pierden al recargar la página.
 import { http, HttpResponse } from 'msw'
-import { API_URL } from '../api/client'
-import type { Alert, Count, CountCreate, ItemCreate, ItemState, Movement, MovementCreate } from '../api/types'
+import { API_URL } from '../api/config'
+import type { Alert, Count, CountCreate, ItemCreate, ItemState, LoginCreate, Movement, MovementCreate, User } from '../api/types'
+
+// Cuentas públicas de demostración. Estos tokens solo son aceptados por MSW.
+const admin: User = { id: 1, name: 'Admin demo', email: 'admin@stocksmart.test', role: 'ADMIN' }
+const warehouse: User = { id: 2, name: 'Bodega demo', email: 'bodega@stocksmart.test', role: 'WAREHOUSE' }
+const mockUsers: Record<string, User> = { 'mock-admin-token': admin, 'mock-warehouse-token': warehouse }
+const actor = (request: Request) => mockUsers[request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '']
 
 const url = (path: string) => `${API_URL}${path}`
 const now = () => new Date().toISOString()
@@ -45,6 +51,8 @@ function addMovement(itemId: number, data: Partial<Movement> & Pick<Movement, 'k
     created_at: now(),
     invalidates_movement_id: null,
     note: null,
+    balance_after: dec(Number(item.current_stock) + Number(data.delta)),
+    created_by: { id: admin.id, name: admin.name },
     ...data,
   }
   movements.push(movement)
@@ -60,7 +68,7 @@ function createItem(body: ItemCreate): ItemState {
     id,
     name: body.name,
     base_unit: body.base_unit,
-    timezone: body.timezone,
+    timezone: body.timezone ?? 'America/Santiago',
     current_stock: dec(0),
     manual_safe_stock: body.manual_safe_stock == null ? null : dec(Number(body.manual_safe_stock)),
     observation_started_at: stamp,
@@ -81,20 +89,31 @@ function createItem(body: ItemCreate): ItemState {
       is_low_stock: null,
       target_stock: null,
       suggested_quantity: null,
+      required_quantity: null,
       daily_average: null,
       remaining_days: null,
       depletion_at: null,
       depletion_status: 'INSUFFICIENT_HISTORY',
+      lead_time_days: null,
+      projected_stock_at_arrival: null,
+      in_transit_quantity: '0',
+      order_by_at: null,
     },
   })
   addMovement(id, { kind: 'INITIAL', delta: dec(quantity), input_quantity: dec(Number(body.initial_quantity)), input_unit: body.initial_unit })
   return items.get(id)!
 }
 
-// Datos de ejemplo (números del mockup, Arquitectura.md §4.3).
-createItem({ name: 'Harina', base_unit: 'kg', initial_quantity: '9', initial_unit: 'kg', timezone: 'America/Santiago', manual_safe_stock: '5' })
-createItem({ name: 'Leche', base_unit: 'L', initial_quantity: '12', initial_unit: 'L', timezone: 'America/Santiago' })
-createItem({ name: 'Huevos', base_unit: 'unidad', initial_quantity: '30', initial_unit: 'unidad', timezone: 'America/Santiago', manual_safe_stock: '36' })
+export function resetMockData() {
+  nextId = 1
+  items.clear()
+  movements.length = 0
+  counts.length = 0
+  createItem({ name: 'Harina', base_unit: 'kg', initial_quantity: '9', initial_unit: 'kg', timezone: 'America/Santiago', manual_safe_stock: '5' })
+  createItem({ name: 'Leche', base_unit: 'L', initial_quantity: '12', initial_unit: 'L', timezone: 'America/Santiago' })
+  createItem({ name: 'Huevos', base_unit: 'unidad', initial_quantity: '30', initial_unit: 'unidad', timezone: 'America/Santiago', manual_safe_stock: '36' })
+}
+resetMockData()
 
 function withItem<T>(id: string | readonly string[] | undefined, fn: (item: ItemState) => T) {
   const item = items.get(Number(id))
@@ -104,7 +123,25 @@ function withItem<T>(id: string | readonly string[] | undefined, fn: (item: Item
 export const handlers = [
   http.get(url('/health'), () => HttpResponse.json({ status: 'ok' })),
 
-  // Pendiente en el backend real (Arquitectura.md §5.3).
+  http.post(url('/auth/login'), async ({ request }) => {
+    const body = await request.json() as LoginCreate
+    const user = [admin, warehouse].find((user) => user.email === body.email.trim().toLowerCase())
+    if (!user || body.password !== 'stocksmart-demo') return fail(401, 'UNAUTHENTICATED', 'Invalid credentials')
+    return HttpResponse.json({ access_token: user.role === 'ADMIN' ? 'mock-admin-token' : 'mock-warehouse-token', token_type: 'bearer', expires_in: 1800 })
+  }),
+
+  http.all(url('/*'), ({ request }) => {
+    const user = actor(request)
+    if (!user) return fail(401, 'UNAUTHENTICATED', 'Bearer token required')
+    const path = new URL(request.url).pathname
+    if (user.role !== 'ADMIN' &&
+        ((request.method === 'POST' && path === '/items') || path.endsWith('/safe-stock'))) {
+      return fail(403, 'FORBIDDEN', 'Administrator required')
+    }
+  }),
+
+  http.get(url('/auth/me'), ({ request }) => HttpResponse.json(actor(request))),
+
   http.get(url('/items'), () => HttpResponse.json([...items.values()])),
 
   http.post(url('/items'), async ({ request }) => {
@@ -146,12 +183,13 @@ export const handlers = [
         input_unit: body.unit,
         occurred_at: body.occurred_at ?? now(),
         note: body.note ?? null,
+        created_by: actor(request),
       })
       return HttpResponse.json(movement, { status: 201 })
     })
   }),
 
-  http.post(url('/movements/:id/reverse'), ({ params }) => {
+  http.post(url('/movements/:id/reverse'), ({ params, request }) => {
     const target = movements.find((m) => m.id === Number(params.id))
     if (!target) return fail(404, 'MOVEMENT_NOT_FOUND', 'Movement does not exist')
     if (movements.some((m) => m.invalidates_movement_id === target.id)) {
@@ -159,7 +197,7 @@ export const handlers = [
     }
     const item = items.get(target.item_id)!
     if (Number(item.current_stock) - Number(target.delta) < 0) return fail(409, 'NEGATIVE_STOCK', 'Insufficient stock')
-    const movement = addMovement(item.id, { kind: 'REVERSAL', delta: dec(-Number(target.delta)), invalidates_movement_id: target.id })
+    const movement = addMovement(item.id, { kind: 'REVERSAL', delta: dec(-Number(target.delta)), invalidates_movement_id: target.id, created_by: actor(request) })
     return HttpResponse.json(movement, { status: 201 })
   }),
 
@@ -169,7 +207,7 @@ export const handlers = [
       const physical = Number(body.physical_quantity) * (toBase[body.unit] ?? 1)
       const before = Number(item.current_stock)
       const difference = physical - before
-      const adjustment = addMovement(item.id, { kind: 'COUNT_ADJUSTMENT', delta: dec(difference) })
+      const adjustment = addMovement(item.id, { kind: 'COUNT_ADJUSTMENT', delta: dec(difference), created_by: actor(request) })
       const count: Count = {
         id: nextId++,
         item_id: item.id,
@@ -182,6 +220,8 @@ export const handlers = [
         cause: body.cause ?? null,
         occurred_at: now(),
         created_at: now(),
+        needs_review: difference > 0,
+        created_by: actor(request)?.id ?? null,
       }
       counts.push(count)
       return HttpResponse.json(count, { status: 201 })
@@ -208,11 +248,16 @@ export const handlers = [
       .filter((item) => item.assessment.is_low_stock)
       .map((item) => ({
         item_id: item.id,
+        base_unit: item.base_unit,
         current_stock: item.current_stock,
         safe_stock: item.assessment.safe_stock,
         alert_source: item.assessment.alert_source,
         alert_status: item.assessment.alert_status,
         is_low_stock: item.assessment.is_low_stock,
+        lead_time_days: item.assessment.lead_time_days,
+        projected_stock_at_arrival: item.assessment.projected_stock_at_arrival,
+        in_transit_quantity: item.assessment.in_transit_quantity,
+        order_by_at: item.assessment.order_by_at,
       }))
     return HttpResponse.json(alerts)
   }),

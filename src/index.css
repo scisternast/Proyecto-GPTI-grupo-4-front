@@ -57,6 +57,24 @@ h2 {
   font-weight: 700;
 }
 
+.session-menu {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+  font-size: 0.9rem;
+}
+
+.login {
+  max-width: 480px;
+  padding-top: 4rem;
+}
+
+.login .muted {
+  margin-top: 0;
+}
+
 .topbar nav,
 .tabs {
   display: flex;

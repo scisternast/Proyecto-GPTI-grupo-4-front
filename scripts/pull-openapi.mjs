@@ -5,7 +5,7 @@ import { writeFile } from 'node:fs/promises'
 const baseUrl = (process.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
 const url = `${baseUrl}/openapi.json`
 
-const response = await fetch(url).catch((error) => {
+const response = await fetch(url, { signal: AbortSignal.timeout(120_000) }).catch((error) => {
   console.error(`No se pudo conectar a ${url}. ¿Está corriendo el backend?\n${error.message}`)
   process.exit(1)
 })

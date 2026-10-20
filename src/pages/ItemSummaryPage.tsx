@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useUpdateSafeStock } from '../api/queries'
+import { useAuth } from '../auth/useAuth'
 import { ErrorMessage } from '../components/Feedback'
 import { formatDate, formatQuantity } from '../lib/format'
 import { ALERT_SOURCE, CONSUMPTION_STATUS, DEPLETION_STATUS } from '../lib/labels'
 import { useCurrentItem } from './useCurrentItem'
 
-// Solo muestra lo que calcula el backend (`assessment`, `consumption`): la fórmula de alerta y
-// cantidad sugerida va a cambiar (Arquitectura.md §9, punto 3) y no debe duplicarse aquí.
+// Las reglas y proyecciones las calcula el backend; aquí solo se presentan.
 export function ItemSummaryPage() {
   const item = useCurrentItem()
+  const { user } = useAuth()
   const { assessment: a, consumption: c, base_unit: unit } = item
 
   return (
@@ -28,7 +29,7 @@ export function ItemSummaryPage() {
             <strong>{formatQuantity(a.suggested_quantity, unit)}</strong>
           </dd>
         </dl>
-        <SafeStockForm />
+        {user?.role === 'ADMIN' && <SafeStockForm />}
       </div>
 
       <div className="card">

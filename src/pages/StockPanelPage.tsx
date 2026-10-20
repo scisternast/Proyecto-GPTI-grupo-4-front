@@ -1,38 +1,28 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
-import { ApiError } from '../api/errors'
+import { Link } from 'react-router'
 import { useAlerts, useItems } from '../api/queries'
+import { useAuth } from '../auth/useAuth'
 import { ErrorMessage, Loading, StatusBadge } from '../components/Feedback'
 import { formatQuantity } from '../lib/format'
 import { ALERT_STATUS } from '../lib/labels'
 
 export function StockPanelPage() {
   const items = useItems()
-  const listMissing = items.error instanceof ApiError && items.error.code === 'NOT_IMPLEMENTED'
+  const { user } = useAuth()
 
   return (
     <section>
       <div className="page-header">
         <h1>Panel de stock</h1>
-        <Link className="button" to="/insumos/nuevo">
+        {user?.role === 'ADMIN' && <Link className="button" to="/insumos/nuevo">
           Nuevo insumo
-        </Link>
+        </Link>}
       </div>
 
       <ActiveAlerts />
 
       <h2>Insumos</h2>
       {items.isPending && <Loading />}
-      {listMissing && (
-        <div className="notice">
-          <p>
-            El backend todavía no expone <code>GET /items</code> (Arquitectura.md §5.3), así que no se puede listar
-            los insumos. Mientras tanto, abre uno por su ID o usa <code>npm run dev:mock</code>.
-          </p>
-          <OpenById />
-        </div>
-      )}
-      {items.error && !listMissing && <ErrorMessage error={items.error} />}
+      {items.error && <ErrorMessage error={items.error} />}
       {items.data && items.data.length === 0 && <p className="muted">Aún no hay insumos registrados.</p>}
       {items.data && items.data.length > 0 && (
         <table>
@@ -79,31 +69,11 @@ function ActiveAlerts() {
       <ul>
         {alerts.data.map((alert) => (
           <li key={alert.item_id}>
-            <Link to={`/insumos/${alert.item_id}`}>Insumo #{alert.item_id}</Link>: {formatQuantity(alert.current_stock)}{' '}
-            (stock seguro {formatQuantity(alert.safe_stock)})
+            <Link to={`/insumos/${alert.item_id}`}>Insumo #{alert.item_id}</Link>: {formatQuantity(alert.current_stock, alert.base_unit)}{' '}
+            (stock seguro {formatQuantity(alert.safe_stock, alert.base_unit)})
           </li>
         ))}
       </ul>
     </div>
-  )
-}
-
-function OpenById() {
-  const [id, setId] = useState('')
-  const navigate = useNavigate()
-  return (
-    <form
-      className="inline-form"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (id) navigate(`/insumos/${id}`)
-      }}
-    >
-      <label>
-        ID del insumo
-        <input type="number" min={1} value={id} onChange={(event) => setId(event.target.value)} />
-      </label>
-      <button type="submit">Abrir</button>
-    </form>
   )
 }

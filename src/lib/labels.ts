@@ -2,6 +2,7 @@
 
 export const ALERT_STATUS: Record<string, string> = {
   LOW_STOCK: 'Stock bajo',
+  IN_TRANSIT: 'Reposición en tránsito',
   OK: 'OK',
   INSUFFICIENT_HISTORY: 'Sin historial suficiente',
 }

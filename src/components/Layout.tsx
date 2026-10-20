@@ -1,7 +1,10 @@
 import { NavLink, Outlet } from 'react-router'
+import { USE_MOCKS } from '../api/config'
 import { useAlerts } from '../api/queries'
+import { useAuth } from '../auth/useAuth'
 
 export function Layout() {
+  const { user, logout } = useAuth()
   const alerts = useAlerts()
   const alertCount = alerts.data?.length ?? 0
 
@@ -18,9 +21,13 @@ export function Layout() {
               </span>
             )}
           </NavLink>
-          <NavLink to="/insumos/nuevo">Nuevo insumo</NavLink>
+          {user?.role === 'ADMIN' && <NavLink to="/insumos/nuevo">Nuevo insumo</NavLink>}
         </nav>
-        {import.meta.env.VITE_USE_MOCKS === 'true' && <span className="badge badge-muted">Datos simulados</span>}
+        {USE_MOCKS && <span className="badge badge-muted">Datos simulados</span>}
+        <div className="session-menu">
+          <span>{user?.name} · {user?.role === 'ADMIN' ? 'Administrador' : 'Bodega'}</span>
+          <button className="link" onClick={logout}>Cerrar sesión</button>
+        </div>
       </header>
       <main className="content">
         <Outlet />

@@ -19,7 +19,6 @@ export function MovementsPage() {
       <MovementForm />
 
       <h2>Historial</h2>
-      {/* Pendiente en el backend (§5.3): `balance_after` y `created_by` para las columnas Saldo y Usuario. */}
       {reverse.error && <ErrorMessage error={reverse.error} />}
       {movements.isPending && <Loading />}
       {movements.error && <ErrorMessage error={movements.error} />}
@@ -31,6 +30,8 @@ export function MovementsPage() {
               <th>Tipo</th>
               <th className="num">Cantidad</th>
               <th className="num">Efecto ({item.base_unit})</th>
+              <th className="num">Saldo ({item.base_unit})</th>
+              <th>Usuario</th>
               <th>Nota</th>
               <th />
             </tr>
@@ -42,6 +43,8 @@ export function MovementsPage() {
                 <td>{describeKind(movement)}</td>
                 <td className="num">{formatQuantity(movement.input_quantity, movement.input_unit)}</td>
                 <td className="num">{signed(movement.delta)}</td>
+                <td className="num">{formatQuantity(movement.balance_after)}</td>
+                <td>{movement.created_by?.name ?? '—'}</td>
                 <td>{movement.note}</td>
                 <td>
                   {REVERSIBLE.has(movement.kind) && !reversedIds.has(movement.id) && (

@@ -4,6 +4,10 @@ import type { components } from './schema'
 
 type Schemas = components['schemas']
 
+export type LoginCreate = Schemas['LoginCreate']
+export type TokenResponse = Schemas['TokenResponse']
+export type User = Schemas['UserResponse']
+
 export type ItemState = Schemas['ItemStateResponse']
 export type ItemCreate = Schemas['ItemCreate']
 export type Assessment = Schemas['AssessmentResponse']

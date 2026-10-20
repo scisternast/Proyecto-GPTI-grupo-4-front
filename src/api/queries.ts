@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, requestPending, unwrap } from './client'
-import type { CountCreate, ItemCreate, ItemState, MovementCreate } from './types'
+import { api, unwrap } from './client'
+import type { CountCreate, ItemCreate, MovementCreate } from './types'
 
 export const keys = {
   items: ['items'] as const,
@@ -13,11 +13,10 @@ export const keys = {
 
 // --- Lecturas ---
 
-/** Pendiente en el backend (Arquitectura.md §5.3): GET /items todavía no existe. */
 export function useItems() {
   return useQuery({
     queryKey: keys.items,
-    queryFn: () => requestPending<ItemState[]>('/items'),
+    queryFn: ({ signal }) => unwrap(api.GET('/items', { signal })),
     retry: false,
   })
 }
@@ -25,28 +24,28 @@ export function useItems() {
 export function useItem(id: number) {
   return useQuery({
     queryKey: keys.item(id),
-    queryFn: () => unwrap(api.GET('/items/{item_id}', { params: { path: { item_id: id } } })),
+    queryFn: ({ signal }) => unwrap(api.GET('/items/{item_id}', { params: { path: { item_id: id } }, signal })),
   })
 }
 
 export function useMovements(id: number) {
   return useQuery({
     queryKey: keys.movements(id),
-    queryFn: () => unwrap(api.GET('/items/{item_id}/movements', { params: { path: { item_id: id } } })),
+    queryFn: ({ signal }) => unwrap(api.GET('/items/{item_id}/movements', { params: { path: { item_id: id } }, signal })),
   })
 }
 
 export function useCounts(id: number) {
   return useQuery({
     queryKey: keys.counts(id),
-    queryFn: () => unwrap(api.GET('/items/{item_id}/counts', { params: { path: { item_id: id } } })),
+    queryFn: ({ signal }) => unwrap(api.GET('/items/{item_id}/counts', { params: { path: { item_id: id } }, signal })),
   })
 }
 
 export function useAlerts() {
   return useQuery({
     queryKey: keys.alerts,
-    queryFn: () => unwrap(api.GET('/alerts')),
+    queryFn: ({ signal }) => unwrap(api.GET('/alerts', { signal })),
     refetchInterval: 60_000,
   })
 }
@@ -54,10 +53,11 @@ export function useAlerts() {
 export function useShortageRate(id: number, start: string, end: string) {
   return useQuery({
     queryKey: keys.shortage(id, start, end),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       unwrap(
         api.GET('/items/{item_id}/shortage-rate', {
           params: { path: { item_id: id }, query: { start, end } },
+          signal,
         }),
       ),
     enabled: Boolean(start && end),
