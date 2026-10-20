@@ -1,9 +1,33 @@
 // Textos en español para los valores enumerados del contrato.
 
 export const ALERT_STATUS: Record<string, string> = {
-  LOW_STOCK: 'Stock bajo',
+  LOW_STOCK: 'Reponer',
   OK: 'OK',
-  INSUFFICIENT_HISTORY: 'Sin historial suficiente',
+  INSUFFICIENT_HISTORY: 'Sin historial',
+  IN_TRANSIT: 'En tránsito',
+}
+
+export const ROLE_LABEL: Record<string, string> = {
+  ADMIN: 'Administrador(a)',
+  WAREHOUSE: 'Encargado(a) de bodega',
+}
+
+export const SUGGESTION_STATUS: Record<string, string> = {
+  PENDING: 'Pendiente',
+  APPROVED: 'Aprobada',
+  REJECTED: 'Rechazada',
+}
+
+export const ORDER_STATUS: Record<string, string> = {
+  APPROVED: 'Aprobada · en tránsito',
+  RECEIVED: 'Recibida',
+}
+
+export const RUN_STATUS: Record<string, string> = {
+  RUNNING: 'En curso',
+  OK: 'Correcto',
+  PARTIAL: 'Parcial',
+  ERROR: 'Falló',
 }
 
 export const ALERT_SOURCE: Record<string, string> = {
@@ -28,7 +52,7 @@ export const MOVEMENT_KIND: Record<string, string> = {
   INITIAL: 'Stock inicial',
   ENTRY: 'Entrada',
   EXIT: 'Salida',
-  COUNT_ADJUSTMENT: 'Ajuste por conteo',
+  COUNT_ADJUSTMENT: 'Conteo',
   REVERSAL: 'Reversa',
   CORRECTION: 'Corrección',
 }

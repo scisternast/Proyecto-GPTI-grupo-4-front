@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { errorMessage } from '../api/errors'
 
 export function Loading() {
@@ -12,12 +13,31 @@ export function ErrorMessage({ error }: { error: unknown }) {
   )
 }
 
-const ALERT_CLASS: Record<string, string> = {
-  LOW_STOCK: 'badge-danger',
-  OK: 'badge-ok',
-  INSUFFICIENT_HISTORY: 'badge-muted',
+type Tone = 'muted' | 'ok' | 'warn' | 'danger' | 'info' | 'primary'
+
+export function Badge({ tone = 'muted', children }: { tone?: Tone; children: ReactNode }) {
+  return <span className={`badge badge-${tone}`}>{children}</span>
 }
 
-export function StatusBadge({ status, label }: { status: string; label: string }) {
-  return <span className={`badge ${ALERT_CLASS[status] ?? 'badge-muted'}`}>{label}</span>
+const ALERT_TONE: Record<string, Tone> = {
+  LOW_STOCK: 'warn',
+  OK: 'ok',
+  INSUFFICIENT_HISTORY: 'muted',
+  IN_TRANSIT: 'info',
+}
+
+export function AlertBadge({ status, label }: { status: string; label: string }) {
+  return <Badge tone={ALERT_TONE[status] ?? 'muted'}>{label}</Badge>
+}
+
+export function PageHeader({ eyebrow, title, actions }: { eyebrow?: ReactNode; title: string; actions?: ReactNode }) {
+  return (
+    <header className="page-header">
+      <div>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <h1>{title}</h1>
+      </div>
+      {actions && <div className="actions">{actions}</div>}
+    </header>
+  )
 }
