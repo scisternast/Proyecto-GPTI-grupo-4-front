@@ -10,6 +10,7 @@ import type {
   OrderReceipt,
   PriceComparison,
   Prices,
+  ScrapeRun,
   SupplierCreate,
   SupplierProductCreate,
   SupplierProductUpdate,
@@ -241,7 +242,13 @@ export function useRefreshPrices() {
     mutationFn: (itemId: number) =>
       unwrap(api.POST('/prices/{item_id}/refresh', { params: { path: { item_id: itemId } } })),
     onSuccess: (data) => {
-      const { runs: _runs, ...prices } = data
+      const { runs, ...prices } = data
+      for (const run of runs) {
+        queryClient.setQueryData<ScrapeRun[]>(keys.scrapeRuns(run.supplier_id), (previous) => {
+          const existing = (previous ?? []).filter((entry) => entry.id !== run.id)
+          return [run, ...existing]
+        })
+      }
       queryClient.setQueryData(keys.prices(data.item_id), toPricesView(prices))
       return queryClient.invalidateQueries({ queryKey: keys.suppliers })
     },
