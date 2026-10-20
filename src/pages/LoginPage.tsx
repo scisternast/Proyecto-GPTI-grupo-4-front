@@ -1,52 +1,89 @@
-import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Navigate, useLocation } from 'react-router'
-import { USE_MOCKS } from '../api/config'
-import { useAuth } from '../auth/useAuth'
-import { SessionStatus } from '../auth/RequireAuth'
+import { Navigate } from 'react-router'
+import { HOME_BY_ROLE } from '../auth/roles'
+import { useSession } from '../auth/sessionContext'
 import { ErrorMessage } from '../components/Feedback'
+import { BUSINESS_NAME, USE_MOCKS } from '../lib/config'
 
 export function LoginPage() {
-  const auth = useAuth()
-  const location = useLocation()
+  const { session, notice, login } = useSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const login = useMutation({ mutationFn: auth.login })
-  const from: unknown = location.state?.from
-  const destination = typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') &&
-    from.split(/[?#]/)[0] !== '/login' ? from : '/'
+  const [error, setError] = useState<unknown>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  if (auth.token) {
-    if (auth.user && !auth.error) return <Navigate to={destination} replace />
-    return <main className="content login"><SessionStatus /></main>
-  }
+  if (session) return <Navigate to={HOME_BY_ROLE[session.user.role]} replace />
 
   return (
-    <main className="content login">
-      <form className="card form" onSubmit={(event) => {
-        event.preventDefault()
-        login.mutate({ email: email.trim(), password }, { onSuccess: () => setPassword('') })
-      }}>
-        <span className="brand">StockSmart</span>
-        <h1>Iniciar sesión</h1>
-        <p className="muted">Ingresa con tu cuenta para consultar y registrar el inventario.</p>
-        {USE_MOCKS && <p className="notice">Datos simulados · usa una cuenta de demostración del README.</p>}
-        {auth.expired && <p className="notice" role="status">Tu sesión venció. Vuelve a iniciar sesión.</p>}
-        <label>
-          Correo
-          <input type="email" autoComplete="username" required maxLength={254}
-            value={email} onChange={(event) => setEmail(event.target.value)} />
-        </label>
-        <label>
-          Contraseña
-          <input type="password" autoComplete="current-password" required
-            value={password} onChange={(event) => setPassword(event.target.value)} />
-        </label>
-        {login.error && <ErrorMessage error={login.error} />}
-        <button type="submit" disabled={login.isPending}>
-          {login.isPending ? 'Ingresando…' : 'Ingresar'}
-        </button>
-      </form>
-    </main>
+    <div className="login">
+      <section className="login-hero">
+        <div className="brand">
+          <strong>StockSmart</strong>
+          <span>{BUSINESS_NAME}</span>
+        </div>
+        <div>
+          <h1>Reponer a tiempo, comprar al mejor precio.</h1>
+          <p>Control de stock, alertas de reposición y comparación automática de precios de proveedores.</p>
+        </div>
+        <span />
+      </section>
+
+      <section className="login-form">
+        <form
+          className="form"
+          onSubmit={async (event) => {
+            event.preventDefault()
+            setSubmitting(true)
+            setError(null)
+            try {
+              await login(email.trim(), password)
+            } catch (caught) {
+              setError(caught)
+            } finally {
+              setSubmitting(false)
+            }
+          }}
+        >
+          <h1>Iniciar sesión</h1>
+          <p className="muted">Ingresa con la cuenta que te asignó el administrador del negocio.</p>
+          <label>
+            Correo electrónico
+            <input
+              type="email"
+              required
+              autoComplete="username"
+              placeholder="usuario@negocio.cl"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label>
+            Contraseña
+            <input
+              type="password"
+              required
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          {notice && error === null && <p className="notice">{notice}</p>}
+          {error !== null && <ErrorMessage error={error} />}
+          <button type="submit" className="block" disabled={submitting}>
+            {submitting ? 'Ingresando…' : 'Ingresar'}
+          </button>
+          <p className="muted small">
+            Las funciones dependen de tu rol: el Administrador(a) aprueba órdenes y configura el sistema; el
+            Encargado(a) de bodega registra movimientos y conteos.
+          </p>
+          {USE_MOCKS && (
+            <p className="notice small">
+              Datos simulados: <code>admin@negocio.cl</code> o <code>bodega@negocio.cl</code>, contraseña{' '}
+              <code>stocksmart-demo</code>.
+            </p>
+          )}
+        </form>
+      </section>
+    </div>
   )
 }

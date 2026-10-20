@@ -1,23 +1,29 @@
 import createClient, { type Middleware } from 'openapi-fetch'
-import { getAccessToken, invalidateSession } from '../auth/session'
-import { API_URL } from './config'
 import { ApiError } from './errors'
 import type { paths } from './schema'
 import type { ErrorBody } from './types'
 
-export { API_URL } from './config'
+export const API_URL = (import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
+
+// Token JWT de la sesión (POST /auth/login). Todas las rutas, salvo el login, lo exigen.
+let accessToken: string | null = null
+export function setAccessToken(token: string | null) {
+  accessToken = token
+}
+
+// Lo registra la sesión: un 401 fuera del login significa token vencido o inválido.
+let onUnauthorized: () => void = () => {}
+export function setUnauthorizedHandler(handler: () => void) {
+  onUnauthorized = handler
+}
 
 const auth: Middleware = {
-  onRequest({ request, schemaPath }) {
-    if (schemaPath === '/auth/login') return request
-    const accessToken = getAccessToken()
+  onRequest({ request }) {
     if (accessToken) request.headers.set('Authorization', `Bearer ${accessToken}`)
     return request
   },
-  onResponse({ request, response, schemaPath }) {
-    if (response.status === 401 && schemaPath !== '/auth/login') {
-      invalidateSession(request.headers.get('Authorization')?.replace(/^Bearer /, '') ?? '')
-    }
+  onResponse({ request, response }) {
+    if (response.status === 401 && !new URL(request.url).pathname.endsWith('/auth/login')) onUnauthorized()
     return response
   },
 }
