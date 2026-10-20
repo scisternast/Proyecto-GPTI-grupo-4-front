@@ -52,7 +52,7 @@ compilar o desplegar):
 | Variable | Archivo | Efecto |
 |---|---|---|
 | `VITE_API_URL` | `.env.local` o Vercel | URL base de la API |
-| `VITE_USE_MOCKS=true` | `.env.mock` (lo usa `--mode mock`) | Arranca MSW antes de mostrar la app |
+| `VITE_USE_MOCKS=true` | `.env.mock` (lo usa `--mode mock`) | Arranca MSW antes de mostrar la app. Solo tiene efecto con `--mode mock` (`USE_MOCKS` en `src/lib/config.ts`) |
 | `VITE_BUSINESS_NAME` | opcional | Nombre del negocio bajo la marca |
 
 Del lado del backend hacen falta:
@@ -236,8 +236,9 @@ sequenceDiagram
   Note over F,B: Cada petición lleva el token.<br/>Un 401 o el vencimiento cierran la sesión.
 ```
 
-- `SessionProvider` guarda `{ token, user, expiresAt }` en `localStorage` (`stocksmart.session`) y pasa el
-  token al cliente HTTP con `setAccessToken()`. Al abrir la app, un token vencido se descarta.
+- `SessionProvider` guarda `{ token, user, expiresAt }` en `sessionStorage` (`stocksmart.session`) y pasa el
+  token al cliente HTTP con `setAccessToken()`. La sesión vive solo en esa pestaña: al cerrarla hay que volver
+  a ingresar. Al abrir la app, un token vencido se descarta.
 - **Vencimiento:** la sesión se cierra sola al vencer el token (por defecto, 30 minutos) o ante cualquier 401
   (token inválido o revocado). El login muestra «Tu sesión venció. Vuelve a ingresar.»
 - **Errores de login:** credenciales incorrectas (`UNAUTHENTICATED`) o demasiados intentos (`LOGIN_THROTTLED`,
@@ -500,8 +501,8 @@ Además, `npm run build` (tipos) y `npm run lint` (oxlint) deben quedar sin erro
 ## 15. Despliegue
 
 - **Frontend:** Vercel compila con `npm run build`. `vercel.json` redirige todas las rutas a `index.html`
-  (SPA). Se configura `VITE_API_URL` con la URL pública del backend; para una demo sin backend, en cambio,
-  `VITE_USE_MOCKS=true`.
+  (SPA). `.env.production` trae `VITE_API_URL` con la URL pública de Render. El build de producción nunca
+  inicia MSW, aunque `VITE_USE_MOCKS` sea `true`: los datos simulados solo existen con `npm run dev:mock`.
 - **Backend:** Render (`render.yaml` y `docs/DEPLOY_RENDER.md` en la rama `codex/deploy-render`). Su
   `STOCKSMART_CORS_ORIGINS` debe incluir el dominio de Vercel, y necesita `STOCKSMART_JWT_SECRET`.
 - Cada push a `main` despliega a producción; otras ramas generan URLs de vista previa.

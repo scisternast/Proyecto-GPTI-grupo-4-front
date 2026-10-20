@@ -5843,7 +5843,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "string"
@@ -6093,7 +6093,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "string"
@@ -6138,7 +6138,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "string"
@@ -6168,7 +6168,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "string"
@@ -6292,7 +6292,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0.0
+                "minimum": 0
               },
               {
                 "type": "string"
@@ -6351,7 +6351,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -6528,7 +6528,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -6709,7 +6709,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -6723,7 +6723,7 @@
           },
           "units_per_pack": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Units Per Pack"
           },
           "base_unit": {
@@ -6769,7 +6769,7 @@
           },
           "units_per_pack": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Units Per Pack"
           },
           "base_unit": {
@@ -7217,7 +7217,7 @@
         "properties": {
           "item_id": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Item Id"
           }
         },
@@ -7421,8 +7421,8 @@
           },
           "lead_time_days": {
             "type": "integer",
-            "maximum": 2147483647.0,
-            "minimum": 0.0,
+            "maximum": 2147483647,
+            "minimum": 0,
             "title": "Lead Time Days"
           },
           "adapter": {
@@ -7459,7 +7459,7 @@
         "properties": {
           "item_id": {
             "type": "integer",
-            "exclusiveMinimum": 0.0,
+            "exclusiveMinimum": 0,
             "title": "Item Id"
           },
           "name_on_site": {
@@ -7478,7 +7478,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -7488,8 +7488,8 @@
           },
           "min_packs": {
             "type": "integer",
-            "maximum": 2147483647.0,
-            "minimum": 1.0,
+            "maximum": 2147483647,
+            "minimum": 1,
             "title": "Min Packs",
             "default": 1
           },
@@ -7610,7 +7610,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0.0
+                "exclusiveMinimum": 0
               },
               {
                 "type": "string"
@@ -7625,8 +7625,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 2147483647.0,
-                "minimum": 1.0
+                "maximum": 2147483647,
+                "minimum": 1
               },
               {
                 "type": "null"
@@ -7755,8 +7755,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 2147483647.0,
-                "minimum": 0.0
+                "maximum": 2147483647,
+                "minimum": 0
               },
               {
                 "type": "null"

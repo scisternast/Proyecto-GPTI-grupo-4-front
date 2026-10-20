@@ -3,7 +3,7 @@ import { Navigate } from 'react-router'
 import { HOME_BY_ROLE } from '../auth/roles'
 import { useSession } from '../auth/sessionContext'
 import { ErrorMessage } from '../components/Feedback'
-import { BUSINESS_NAME } from '../lib/config'
+import { BUSINESS_NAME, USE_MOCKS } from '../lib/config'
 
 export function LoginPage() {
   const { session, notice, login } = useSession()
@@ -76,7 +76,7 @@ export function LoginPage() {
             Las funciones dependen de tu rol: el Administrador(a) aprueba órdenes y configura el sistema; el
             Encargado(a) de bodega registra movimientos y conteos.
           </p>
-          {import.meta.env.VITE_USE_MOCKS === 'true' && (
+          {USE_MOCKS && (
             <p className="notice small">
               Datos simulados: <code>admin@negocio.cl</code> o <code>bodega@negocio.cl</code>, contraseña{' '}
               <code>stocksmart-demo</code>.

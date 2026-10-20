@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAlerts } from '../api/queries'
 import { useSession, useUser } from '../auth/sessionContext'
-import { BUSINESS_NAME } from '../lib/config'
+import { BUSINESS_NAME, USE_MOCKS } from '../lib/config'
 import { ROLE_LABEL } from '../lib/labels'
 
 interface NavItem {
@@ -54,7 +54,7 @@ export function Layout() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          {import.meta.env.VITE_USE_MOCKS === 'true' && <p className="sidebar-note">Datos simulados</p>}
+          {USE_MOCKS && <p className="sidebar-note">Datos simulados</p>}
           <div className="user">
             <div>
               <strong>{user.name}</strong>

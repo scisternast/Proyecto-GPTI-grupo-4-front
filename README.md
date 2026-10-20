@@ -4,24 +4,30 @@ Frontend web de StockSmart (React + TypeScript + Vite). Cómo funciona por dentr
 backend, pantalla por pantalla: [docs/FRONTEND.md](docs/FRONTEND.md).
 
 El backend está en
-[`Proyecto-GPTI-grupo-4-back`](../Proyecto-GPTI-grupo-4-back) y su contrato OpenAPI es la fuente oficial
-de la API (`/docs` y `/openapi.json` del backend).
+[`Proyecto-GPTI-grupo-4-back`](https://github.com/Rvillena75/Proyecto-GPTI-grupo-4-back) y su contrato OpenAPI es
+la fuente oficial de la API (`/docs` y `/openapi.json` del backend).
 
 ## Requisitos
 
-- Node 20 o posterior.
+- Node 24.x y npm (la versión también está fijada en `package.json` para Vercel).
 
 ## Primeros pasos
 
 ```bash
-npm install
+npm ci
 npm run dev:mock   # sin backend: datos simulados en memoria (MSW)
 npm run dev        # contra el backend real
 ```
 
 La app queda en `http://localhost:5173`.
 
-En `dev:mock` hay dos usuarios de prueba (contraseña `stocksmart-demo`):
+Para usar Render en desarrollo, copia `.env.example` a `.env.local` y ejecuta `npm run dev`.
+Para un backend local, cambia `VITE_API_URL` a su dirección (por ejemplo, `http://127.0.0.1:8000`).
+Reinicia Vite después de cambiar las variables. El backend debe permitir el origen `http://localhost:5173`
+(`STOCKSMART_CORS_ORIGINS`).
+
+El modo simulado solo se activa con `npm run dev:mock` (`--mode mock` + `VITE_USE_MOCKS=true`); un build normal
+nunca inicia MSW. Tiene dos usuarios de prueba, con contraseña `stocksmart-demo`, que no sirven para el backend real:
 
 - `admin@negocio.cl` — Administrador(a): ve todas las pantallas y aprueba órdenes.
 - `bodega@negocio.cl` — Encargado(a) de bodega: solo Movimientos y Conteo y merma.
@@ -29,8 +35,18 @@ En `dev:mock` hay dos usuarios de prueba (contraseña `stocksmart-demo`):
 Los datos simulados reproducen los mockups: pechuga de pollo asada (9 kg, 7 kg/semana, entrega máx. 4 días → «pide
 hoy» 9 kg; Jumbo a $11.900/kg, ahorro $5.310) y **vuelven al estado inicial cada vez que se recarga la página**.
 
-Para usar el backend real, copia `.env.example` a `.env.local` y ajusta `VITE_API_URL`. Además, el backend tiene
-que aceptar el origen del frontend: `STOCKSMART_CORS_ORIGINS=http://localhost:5173`.
+## Acceso y permisos
+
+La pantalla `/login` envía correo y contraseña a `POST /auth/login`. Después valida la cuenta con
+`GET /auth/me` y agrega `Authorization: Bearer …` a las solicitudes protegidas. El token y su
+caducidad se conservan en `sessionStorage` de la pestaña (se pierden al cerrarla); la contraseña no se guarda.
+Al vencer la sesión o recibir un 401, vuelve al acceso. Cerrar sesión limpia la caché para que otra cuenta no vea
+datos de la anterior. No hay renovación automática ni registro público.
+
+- **ADMIN** ve todas las pantallas: configura insumos, stock seguro y proveedores, y aprueba órdenes.
+- **WAREHOUSE** solo ve Movimientos y Conteo y merma.
+- El backend confirma los permisos en cada operación. Un 403 muestra el error sin cerrar la sesión.
+- Un login bloqueado por intentos (429) muestra el tiempo de espera; los errores 409 conservan su mensaje de negocio.
 
 ## Scripts
 
@@ -69,13 +85,13 @@ openapi/openapi.json     Copia del contrato del backend (se versiona para compil
 src/api/
   schema.d.ts            Tipos generados desde OpenAPI
   types.ts               Alias legibles (ItemState, Movement, …)
-  client.ts              Cliente tipado (openapi-fetch), token Bearer, unwrap() y requestPending()
+  client.ts              Cliente tipado (openapi-fetch), token Bearer y unwrap()
   errors.ts              ApiError y traducción al español por `code`
   queries.ts             Hooks de TanStack Query (lecturas y escrituras)
-src/auth/                Sesión, roles y rutas protegidas
+src/auth/                Sesión de la pestaña, roles y rutas protegidas
 src/state/               Insumo seleccionado (compartido entre pantallas)
 src/mocks/               Backend simulado para `dev:mock` y tests (db.ts: datos; handlers.ts: rutas)
-src/lib/                 Formato (hora de Chile, CLP), textos de los enums, historial con saldo
+src/lib/                 Configuración, formato (hora de Chile, CLP), textos de los enums, historial con saldo
 src/pages/               Pantallas
 src/components/          Barra lateral, gráfico, selector de insumo y componentes compartidos
 ```
@@ -104,6 +120,45 @@ Detalles de la integración, rutas por pantalla y diferencias con el mockup: [do
 
 ## Despliegue (Vercel)
 
-1. Importa el repositorio en Vercel (preset Vite; `vercel.json` ya redirige las rutas al `index.html`).
-2. Define `VITE_API_URL` con la URL pública del backend.
-3. Agrega el dominio de Vercel a `STOCKSMART_CORS_ORIGINS` en el backend.
+El repositorio contiene `.env.production` con la URL pública de Render y la simulación desactivada.
+`vercel.json` fija instalación, compilación, salida y rutas SPA.
+
+1. Incorpora estos cambios a la rama que Vercel despliega como Production (habitualmente `main`).
+2. En el proyecto de Vercel, revisa:
+
+   | Campo | Valor |
+   |---|---|
+   | Framework Preset | Vite |
+   | Root Directory | Raíz de este repositorio (vacío o `.`) |
+   | Install Command | `npm ci` |
+   | Build Command | `npm run build` |
+   | Output Directory | `dist` |
+   | Node.js | 24.x |
+
+3. En **Settings → Environment Variables**, configura estos valores si ya existen variables
+   del despliegue anterior (las variables de Vercel prevalecen sobre `.env.production`):
+
+   ```dotenv
+   VITE_API_URL=https://proyecto-gpti-grupo-4-back.onrender.com
+   VITE_USE_MOCKS=false
+   ```
+
+   Son valores públicos del frontend. La URL de PostgreSQL y el secreto de firma JWT permanecen en Render.
+4. En el backend, `STOCKSMART_CORS_ORIGINS` debe incluir los orígenes exactos, sin `/` final:
+
+   ```text
+   https://stocksmart-nine.vercel.app,http://localhost:5173
+   ```
+
+   Si pruebas un dominio Preview diferente, agrega también ese origen exacto al backend.
+5. Ejecuta **Redeploy** después de cambiar variables: Vite las incorpora al compilar.
+6. Abre `https://stocksmart-nine.vercel.app/login` e ingresa con una cuenta existente del backend.
+   No debe aparecer la etiqueta de datos simulados y debe verse el inventario de Render.
+   Recarga una ruta interna para comprobar la redirección SPA.
+
+Antes de publicar, ejecuta `npm test`, `npm run lint` y `npm run build`.
+Las pruebas automatizadas usan MSW; la comprobación del despliegue real se realiza después de publicar en Vercel.
+
+Referencias de configuración: [Vite en Vercel](https://vercel.com/docs/frameworks/frontend/vite),
+[Node.js en Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions) y
+[variables y modos de Vite](https://vite.dev/guide/env-and-mode).

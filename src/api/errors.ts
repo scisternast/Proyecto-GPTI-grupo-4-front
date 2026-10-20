@@ -84,8 +84,8 @@ export class ApiError extends Error {
   readonly body: ErrorBody | undefined
 
   constructor(status: number, body: ErrorBody | undefined, fallbackCode = 'UNKNOWN') {
-    const code = body?.error.code ?? fallbackCode
-    super(MESSAGES[code] ?? body?.error.message ?? `Error inesperado (${status}).`)
+    const code = body?.error?.code ?? fallbackCode
+    super(MESSAGES[code] ?? body?.error?.message ?? `Error inesperado (${status}).`)
     this.name = 'ApiError'
     this.status = status
     this.code = code

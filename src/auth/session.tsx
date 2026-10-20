@@ -6,9 +6,10 @@ import { type Session, SessionContext } from './sessionContext'
 const STORAGE_KEY = 'stocksmart.session'
 const EXPIRED = 'Tu sesión venció. Vuelve a ingresar.'
 
+// sessionStorage: la sesión vive solo en esta pestaña y se pierde al cerrarla.
 function readStored(): Session | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = sessionStorage.getItem(STORAGE_KEY)
     const stored = raw ? (JSON.parse(raw) as Session) : null
     // Un token vencido no sirve: se descarta antes de llamar a la API.
     return stored && stored.expiresAt > Date.now() ? stored : null
@@ -19,8 +20,8 @@ function readStored(): Session | null {
 
 function store(session: Session | null) {
   try {
-    if (session) localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
-    else localStorage.removeItem(STORAGE_KEY)
+    if (session) sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+    else sessionStorage.removeItem(STORAGE_KEY)
   } catch {
     // Sin almacenamiento (modo privado): la sesión dura hasta recargar.
   }
