@@ -6,8 +6,9 @@ import { ColumnChart } from '../components/Charts'
 import { ErrorMessage, Loading, PageHeader } from '../components/Feedback'
 import { ItemSelect } from '../components/ItemSelect'
 import { BUSINESS_NAME } from '../lib/config'
-import { dateInputToIso, daysAgoKey, formatCLP, formatPercent, formatQuantity, formatShortDate, joinNames, todayKey } from '../lib/format'
+import { dateInputToIso, formatCLP, formatPercent, formatQuantity, formatShortDate, joinNames, todayKey } from '../lib/format'
 import { nextDay } from '../lib/ledger'
+import { defaultStart, periodStart } from '../lib/period'
 import { useSelectedItem } from '../state/useSelectedItem'
 
 // Mockup «Métricas del negocio» (REQ-12, C7). Los indicadores del período vienen de GET /metrics
@@ -15,17 +16,24 @@ import { useSelectedItem } from '../state/useSelectedItem'
 export function MetricsPage() {
   const { id } = useSelectedItem()
   const item = useItem(id)
-  const [start, setStart] = useState(() => daysAgoKey(90))
+  const items = useItems()
+  // null = el usuario aún no eligió: se usa el período por defecto, que depende de los insumos.
+  const [chosenStart, setStart] = useState<string | null>(null)
   const [end, setEnd] = useState(todayKey)
+  const start = chosenStart ?? (items.data ? defaultStart(items.data) : null)
   // Período [inicio, fin): «Hasta» incluye el día completo.
-  const startIso = dateInputToIso(start)
+  const startIso = start === null ? null : periodStart(start, items.data ?? [])
   const endIso = dateInputToIso(nextDay(end))
   const metrics = useMetrics(startIso, endIso)
   const suggestions = useSuggestions()
-  const shrink = useShrinkByCount(item.data, startIso, endIso)
+  const shrink = useShrinkByCount(item.data, startIso ?? endIso, endIso)
   const m = metrics.data
   const decided = (suggestions.data ?? []).filter(
-    (s) => s.decided_at !== null && Date.parse(s.decided_at) >= Date.parse(startIso) && Date.parse(s.decided_at) < Date.parse(endIso),
+    (s) =>
+      startIso !== null &&
+      s.decided_at !== null &&
+      Date.parse(s.decided_at) >= Date.parse(startIso) &&
+      Date.parse(s.decided_at) < Date.parse(endIso),
   )
 
   return (
@@ -36,13 +44,13 @@ export function MetricsPage() {
         actions={
           <div className="period">
             <span className="muted small">Período</span>
-            <input type="date" aria-label="Inicio del período" value={start} max={end} onChange={(e) => setStart(e.target.value)} />
+            <input type="date" aria-label="Inicio del período" value={start ?? ''} max={end} onChange={(e) => setStart(e.target.value)} />
             <span className="muted">–</span>
             <input type="date" aria-label="Fin del período" value={end} max={todayKey()} onChange={(e) => setEnd(e.target.value)} />
           </div>
         }
       />
-      {metrics.isPending && <Loading />}
+      {(metrics.isPending || start === null) && <Loading />}
       {metrics.error && <ErrorMessage error={metrics.error} />}
 
       <div className={`kpis${metrics.isFetching && m ? ' refetching' : ''}`}>
@@ -233,6 +241,18 @@ function SavingsTable({ metrics: m, suggestions }: { metrics: Metrics; suggestio
 function ItemsTable({ metrics: m }: { metrics: Metrics }) {
   const items = useItems()
   const name = (id: number) => items.data?.find((i) => i.id === id)?.name ?? `#${id}`
+  // El backend no calcula la merma si el período empieza antes del registro del insumo (responde 0 y
+  // NOT_CALCULABLE). Para esos insumos se pide la misma tasa desde el inicio de su propio registro.
+  const recordStart = (itemId: number) => items.data?.find((i) => i.id === itemId)?.observation_started_at ?? null
+  const late = m.items.filter((row) => {
+    const since = recordStart(row.item_id)
+    return row.shortage.status !== 'CALCULABLE' && since !== null && Date.parse(m.start) < Date.parse(since) && Date.parse(since) < Date.parse(m.end)
+  })
+  const fromRecord = useQueries({
+    queries: late.map((row) => shortageRateQuery(row.item_id, new Date(recordStart(row.item_id)!).toISOString(), new Date(m.end).toISOString())),
+  })
+  const fallback = new Map(late.map((row, i) => [row.item_id, fromRecord[i]?.data]))
+
   return (
     <div className="card section">
       <h2>Merma y quiebres por insumo</h2>
@@ -242,21 +262,27 @@ function ItemsTable({ metrics: m }: { metrics: Metrics }) {
             <tr>
               <th>Insumo</th>
               <th className="num">Merma</th>
-              <th className="num">Tasa de merma</th>
+              <th className="num">Tasa de merma del período</th>
               <th className="num">Quiebres de stock</th>
             </tr>
           </thead>
           <tbody>
-            {m.items.map((row) => (
-              <tr key={row.item_id}>
-                <td>{name(row.item_id)}</td>
-                <td className="num">{formatQuantity(row.shortage.shortage, row.base_unit)}</td>
-                <td className="num">
-                  {row.shortage.status === 'CALCULABLE' ? formatPercent(row.shortage.rate_percent) : 'No calculable'}
-                </td>
-                <td className="num">{row.stockout_count}</td>
-              </tr>
-            ))}
+            {m.items.map((row) => {
+              const since = fallback.has(row.item_id) ? recordStart(row.item_id) : null
+              const rate = fallback.get(row.item_id) ?? row.shortage
+              const calculable = rate.status === 'CALCULABLE'
+              return (
+                <tr key={row.item_id}>
+                  <td>{name(row.item_id)}</td>
+                  <td className="num">{calculable ? formatQuantity(rate.shortage, row.base_unit) : '—'}</td>
+                  <td className="num">
+                    {calculable ? formatPercent(rate.rate_percent) : 'No calculable'}
+                    {since && <small className="block muted">desde el {formatShortDate(since)} (inicio del registro)</small>}
+                  </td>
+                  <td className="num">{row.stockout_count}</td>
+                </tr>
+              )
+            })}
           </tbody>
           <tfoot>
             <tr>
@@ -270,7 +296,8 @@ function ItemsTable({ metrics: m }: { metrics: Metrics }) {
       </div>
       <p className="muted small">
         Un quiebre es cuando el stock registrado pasa de positivo a cero. No incluye ventas perdidas ni demanda no
-        registrada. La merma no se suma entre insumos con unidades distintas.
+        registrada. La merma no se suma entre insumos con unidades distintas. La tasa del período puede diferir de la
+        merma promedio de arriba, que promedia la merma de cada conteo.
       </p>
     </div>
   )

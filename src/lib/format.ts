@@ -12,7 +12,10 @@ const dateTimeFormat = new Intl.DateTimeFormat('es-CL', {
   minute: '2-digit',
 })
 const shortDateFormat = new Intl.DateTimeFormat('es-CL', { timeZone: TIME_ZONE, day: '2-digit', month: '2-digit' })
-const dayKeyFormat = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE })
+// Partes numéricas de la fecha en Chile. No se usa el formato de texto de un idioma (p. ej. 'en-CA' →
+// «2026-10-21») porque varía según el navegador: algunos devuelven «10/21/2026», y un <input type="date">
+// con ese valor se muestra vacío.
+const dayPartsFormat = new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' })
 
 /** Cómo se muestra cada unidad (el backend usa `unidad`; el mockup muestra `u`). */
 export const UNIT_LABEL: Record<string, string> = { kg: 'kg', g: 'g', L: 'L', mL: 'mL', unidad: 'u' }
@@ -51,7 +54,8 @@ export function formatShortDate(value: string | Date | null | undefined): string
 
 /** Día calendario en Chile (AAAA-MM-DD), para comparar fechas sin la hora. */
 export function dayKey(value: string | Date): string {
-  return dayKeyFormat.format(new Date(value))
+  const parts = Object.fromEntries(dayPartsFormat.formatToParts(new Date(value)).map((p) => [p.type, p.value]))
+  return `${parts.year}-${parts.month}-${parts.day}`
 }
 
 export function todayKey(): string {

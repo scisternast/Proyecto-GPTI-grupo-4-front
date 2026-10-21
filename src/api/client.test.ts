@@ -176,6 +176,21 @@ describe('escenario de los mockups (Arquitectura.md §4.3)', () => {
     expect(m.impact_comparison.status).toBe('NOT_VERIFIABLE')
   })
 
+  it('métricas: si el período empieza antes del registro del insumo, la merma no es calculable', async () => {
+    const pollo = await itemNamed(POLLO)
+    const before = new Date(Date.parse(pollo.observation_started_at!) - 86_400_000).toISOString()
+    const after = new Date(Date.parse(pollo.observation_started_at!) + 1).toISOString()
+    const end = new Date().toISOString()
+    const rowFor = async (start: string) => {
+      const m = (await unwrap(api.GET('/metrics', { params: { query: { start, end } } }))) as unknown as Metrics
+      return m.items.find((i) => i.item_id === pollo.id)!.shortage
+    }
+    expect((await rowFor(before)).status).toBe('NOT_CALCULABLE')
+    const fromRecord = await rowFor(after)
+    expect(fromRecord.status).toBe('CALCULABLE')
+    expect(Number(fromRecord.shortage)).toBeGreaterThan(0)
+  })
+
   it('métricas: la bodega no tiene acceso', async () => {
     await loginAs('bodega@negocio.cl')
     const error = await failure(unwrap(api.GET('/metrics', { params: { query: { start: '2026-01-01T00:00:00Z', end: '2026-02-01T00:00:00Z' } } })))

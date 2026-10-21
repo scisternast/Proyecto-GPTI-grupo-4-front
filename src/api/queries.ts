@@ -299,10 +299,13 @@ export function useDecideSuggestion() {
 }
 
 /** Indicadores del período [start, end) para todo el negocio (solo Administrador(a)). */
-export function useMetrics(start: string, end: string) {
+/** `start` null = el período aún no se conoce (no se consulta). */
+export function useMetrics(start: string | null, end: string) {
   return useQuery({
-    queryKey: keys.metrics(start, end),
+    queryKey: keys.metrics(start ?? '', end),
     // La ruta no declara su respuesta en OpenAPI: se tipa según el backend (ver Metrics).
-    queryFn: async () => (await unwrap(api.GET('/metrics', { params: { query: { start, end } } }))) as unknown as Metrics,
+    queryFn: async () =>
+      (await unwrap(api.GET('/metrics', { params: { query: { start: start!, end } } }))) as unknown as Metrics,
+    enabled: start !== null,
   })
 }
