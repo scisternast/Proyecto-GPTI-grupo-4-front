@@ -485,6 +485,10 @@ export function createDb() {
 
   /** Tasa P3: faltantes del período / (stock al inicio + entradas y ajustes positivos). */
   function shortageRate(itemId: number, start: string, end: string) {
+    // Como el backend: un período que empieza antes del registro del insumo no es calculable.
+    if (Date.parse(start) < Date.parse(getItemRow(itemId).observation_started_at)) {
+      return { status: 'NOT_CALCULABLE' as const, available: null, shortage: '0', rate_percent: null }
+    }
     const from = Date.parse(start)
     const to = Date.parse(end)
     const ofItem = movements.filter((m) => m.item_id === itemId)
