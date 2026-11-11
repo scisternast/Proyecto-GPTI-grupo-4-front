@@ -18,7 +18,7 @@ import type {
   SupplierUpdate,
 } from '../api/types'
 import { Badge, ErrorMessage, Loading, PageHeader } from '../components/Feedback'
-import { formatDateTime, formatQuantity, UNIT_LABEL } from '../lib/format'
+import { formatCLP, formatDateTime, formatQuantity, UNIT_LABEL } from '../lib/format'
 import { RUN_STATUS } from '../lib/labels'
 import { ADAPTERS, runResults, scrapeErrorMessage } from '../lib/procurement'
 
@@ -55,6 +55,7 @@ export function SuppliersPage() {
                   <th>Proveedor</th>
                   <th>Fuente de precios (URL)</th>
                   <th className="num">Entrega</th>
+                  <th className="num">Despacho</th>
                   <th className="num">Productos</th>
                   <th>Último scraping</th>
                   <th />
@@ -80,6 +81,7 @@ export function SuppliersPage() {
                       )}
                     </td>
                     <td className="num">{supplier.lead_time_days} días</td>
+                    <td className="num">{formatCLP(supplier.shipping_cost_clp ?? '0')}</td>
                     <td className="num">{products.filter((p) => p.supplier_id === supplier.id && p.is_active).length}</td>
                     <td>
                       <LastRun run={runsBySupplier.get(supplier.id)?.[0]} />
@@ -212,6 +214,7 @@ function SupplierForm({
   const save = useSaveSupplier()
   const [name, setName] = useState(supplier?.name ?? '')
   const [leadTime, setLeadTime] = useState(supplier ? String(supplier.lead_time_days) : '')
+  const [shipping, setShipping] = useState(supplier?.shipping_cost_clp ?? '0')
   const [url, setUrl] = useState(supplier?.price_source_url ?? '')
   const [adapter, setAdapter] = useState<Adapter | ''>((supplier?.adapter as Adapter | null) ?? '')
   const [active, setActive] = useState(supplier?.is_active ?? true)
@@ -224,6 +227,7 @@ function SupplierForm({
         const values = {
           name: name.trim(),
           lead_time_days: Number(leadTime),
+          shipping_cost_clp: shipping,
           price_source_url: url.trim() || null,
           adapter: adapter || null,
           is_active: active,
@@ -252,6 +256,10 @@ function SupplierForm({
           <input required type="number" min={0} step={1} value={leadTime} onChange={(event) => setLeadTime(event.target.value)} />
         </label>
       </div>
+      <label>
+        Despacho fijo por orden (CLP)
+        <input type="number" min={0} step="any" required value={shipping} onChange={event => setShipping(event.target.value)} />
+      </label>
       <label>
         URL de la fuente de precios
         <input type="url" className="mono" value={url} onChange={(event) => setUrl(event.target.value)} />

@@ -90,7 +90,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -2066,7 +2066,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4053,7 +4053,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4174,7 +4174,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -4322,7 +4322,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "429": {
             "content": {
@@ -4468,7 +4468,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "429": {
             "content": {
@@ -4605,7 +4605,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "429": {
             "content": {
@@ -4752,7 +4752,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "429": {
             "content": {
@@ -4898,7 +4898,7 @@
                 }
               }
             },
-            "description": "Unprocessable Entity"
+            "description": "Unprocessable Content"
           },
           "429": {
             "content": {
@@ -4931,6 +4931,143 @@
             "description": "Service Unavailable"
           }
         }
+      }
+    },
+    "/movements/import-csv": {
+      "post": {
+        "tags": [
+          "movements"
+        ],
+        "summary": "Upload Csv",
+        "operationId": "upload_csv_movements_import_csv_post",
+        "requestBody": {
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method Not Allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/health": {
@@ -5013,7 +5150,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5138,7 +5275,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5261,7 +5398,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5384,7 +5521,7 @@
             }
           },
           "422": {
-            "description": "Unprocessable Entity",
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -5843,7 +5980,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "string"
@@ -5996,6 +6133,32 @@
         ],
         "title": "CountResponse"
       },
+      "CsvImportResponse": {
+        "properties": {
+          "imported": {
+            "type": "integer",
+            "title": "Imported"
+          },
+          "movement_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Movement Ids"
+          },
+          "replayed": {
+            "type": "boolean",
+            "title": "Replayed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imported",
+          "movement_ids",
+          "replayed"
+        ],
+        "title": "CsvImportResponse"
+      },
       "DecisionCreate": {
         "properties": {
           "decision": {
@@ -6093,7 +6256,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "string"
@@ -6138,7 +6301,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "string"
@@ -6168,7 +6331,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "string"
@@ -6292,7 +6455,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "minimum": 0
+                "minimum": 0.0
               },
               {
                 "type": "string"
@@ -6351,7 +6514,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string"
@@ -6528,7 +6691,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string"
@@ -6603,6 +6766,28 @@
               }
             ],
             "title": "Purchased Qty"
+          },
+          "subtotal_clp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtotal Clp"
+          },
+          "shipping_cost_clp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Cost Clp"
           },
           "total_clp": {
             "anyOf": [
@@ -6688,6 +6873,8 @@
           "supplier_product_id",
           "packs",
           "purchased_qty",
+          "subtotal_clp",
+          "shipping_cost_clp",
           "total_clp",
           "decided_by",
           "decided_at",
@@ -6709,7 +6896,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string"
@@ -6723,7 +6910,7 @@
           },
           "units_per_pack": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Units Per Pack"
           },
           "base_unit": {
@@ -6769,7 +6956,7 @@
           },
           "units_per_pack": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Units Per Pack"
           },
           "base_unit": {
@@ -7217,7 +7404,7 @@
         "properties": {
           "item_id": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Item Id"
           }
         },
@@ -7287,6 +7474,28 @@
               }
             ],
             "title": "Purchased Qty"
+          },
+          "subtotal_clp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtotal Clp"
+          },
+          "shipping_cost_clp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Cost Clp"
           },
           "total_clp": {
             "anyOf": [
@@ -7387,6 +7596,8 @@
           "supplier_product_id",
           "packs",
           "purchased_qty",
+          "subtotal_clp",
+          "shipping_cost_clp",
           "total_clp",
           "next_best_total_clp",
           "savings_clp",
@@ -7421,9 +7632,22 @@
           },
           "lead_time_days": {
             "type": "integer",
-            "maximum": 2147483647,
-            "minimum": 0,
+            "maximum": 2147483647.0,
+            "minimum": 0.0,
             "title": "Lead Time Days"
+          },
+          "shipping_cost_clp": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Shipping Cost Clp",
+            "default": "0"
           },
           "adapter": {
             "anyOf": [
@@ -7459,7 +7683,7 @@
         "properties": {
           "item_id": {
             "type": "integer",
-            "exclusiveMinimum": 0,
+            "exclusiveMinimum": 0.0,
             "title": "Item Id"
           },
           "name_on_site": {
@@ -7478,7 +7702,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string"
@@ -7488,8 +7712,8 @@
           },
           "min_packs": {
             "type": "integer",
-            "maximum": 2147483647,
-            "minimum": 1,
+            "maximum": 2147483647.0,
+            "minimum": 1.0,
             "title": "Min Packs",
             "default": 1
           },
@@ -7610,7 +7834,7 @@
             "anyOf": [
               {
                 "type": "number",
-                "exclusiveMinimum": 0
+                "exclusiveMinimum": 0.0
               },
               {
                 "type": "string"
@@ -7625,8 +7849,8 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 2147483647,
-                "minimum": 1
+                "maximum": 2147483647.0,
+                "minimum": 1.0
               },
               {
                 "type": "null"
@@ -7685,6 +7909,10 @@
             "type": "integer",
             "title": "Lead Time Days"
           },
+          "shipping_cost_clp": {
+            "type": "string",
+            "title": "Shipping Cost Clp"
+          },
           "adapter": {
             "anyOf": [
               {
@@ -7717,6 +7945,7 @@
           "name",
           "price_source_url",
           "lead_time_days",
+          "shipping_cost_clp",
           "adapter",
           "is_active",
           "created_at",
@@ -7755,14 +7984,29 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 2147483647,
-                "minimum": 0
+                "maximum": 2147483647.0,
+                "minimum": 0.0
               },
               {
                 "type": "null"
               }
             ],
             "title": "Lead Time Days"
+          },
+          "shipping_cost_clp": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipping Cost Clp"
           },
           "adapter": {
             "anyOf": [

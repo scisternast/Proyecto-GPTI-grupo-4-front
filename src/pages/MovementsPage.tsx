@@ -3,6 +3,7 @@ import type { ItemState } from '../api/types'
 import { useCounts, useCreateMovement, useItem, useMovements, useOrders, useReverseMovement } from '../api/queries'
 import { Badge, ErrorMessage, Loading, PageHeader } from '../components/Feedback'
 import { ItemSelect } from '../components/ItemSelect'
+import { CsvImport } from '../components/CsvImport'
 import {
   dateInputToOccurredAt,
   formatQuantity,
@@ -48,6 +49,7 @@ export function MovementsPage() {
         <MovementForm item={item.data} />
         {item.data ? <History item={item.data} /> : <div className="card">{id !== null && <Loading />}</div>}
       </div>
+      <CsvImport />
     </section>
   )
 }

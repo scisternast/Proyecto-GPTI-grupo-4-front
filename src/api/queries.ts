@@ -12,6 +12,7 @@ import type {
   Prices,
   ScrapeRun,
   SupplierCreate,
+  Supplier,
   SupplierProductCreate,
   SupplierProductUpdate,
   SupplierUpdate,
@@ -141,7 +142,7 @@ export function useCreateCount() {
 // Proveedores, productos y precios
 
 export function useSuppliers() {
-  return useQuery({ queryKey: keys.suppliers, queryFn: () => unwrap(api.GET('/suppliers')) })
+  return useQuery({ queryKey: keys.suppliers, queryFn: (): Promise<Supplier[]> => unwrap(api.GET('/suppliers')) })
 }
 
 function productsQuery(supplierId: number) {

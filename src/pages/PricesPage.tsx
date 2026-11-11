@@ -8,7 +8,7 @@ import { dayKey, formatCLP, formatDateTime, formatPercent, formatQuantity, forma
 import { lastResultFor, PRICE_STATE, scrapeErrorMessage } from '../lib/procurement'
 import { useSelectedItem } from '../state/useSelectedItem'
 
-// Mockup «Comparar precios». Precios con IVA (C14), sin despacho (C4), solo vigentes y con al menos
+// E3: precios con IVA y despacho fijo por proveedor, solo vigentes y con al menos
 // 2 proveedores distintos (Arquitectura.md §4.3). La comparación la calcula el backend.
 export function PricesPage() {
   const { id } = useSelectedItem()
@@ -162,6 +162,7 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
                           <small className="block muted">
                             {option.packs} × {formatQuantity(offer.pack_quantity, item.base_unit)}
                           </small>
+                          <small className="block muted">Formatos: {formatCLP(option.subtotal_clp)} · Despacho: {formatCLP(option.shipping_cost_clp)}</small>
                         </>
                       ) : (
                         'Excluido'
@@ -208,9 +209,9 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
               ))}
           </ul>
           <p className="footnote">
-            Total = precio del formato × formatos completos para cubrir la cantidad sugerida. Los precios incluyen IVA,
+            Total = precio del formato × formatos completos + despacho fijo una sola vez. Los precios incluyen IVA,
             tal como los publican los sitios de los proveedores. Cada precio se obtiene por Web Scraping y vale 7 días;
-            si el sitio falla se usa el último precio mientras siga vigente. El despacho no se incluye porque el
+            si el sitio falla se usa el último precio mientras siga vigente. Se suma el despacho fijo del proveedor; el
             scraping no lo obtiene.
           </p>
         </div>

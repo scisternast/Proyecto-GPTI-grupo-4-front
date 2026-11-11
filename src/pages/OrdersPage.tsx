@@ -140,7 +140,9 @@ function OrderCard({ item, order, suggestion, catalog }: OrderCardProps) {
   const supplier = catalog.supplier(productId)
   const purchased = order?.purchased_qty ?? suggestion?.purchased_qty ?? null
   const total = order?.total_clp ?? suggestion?.total_clp ?? null
-  const unitPrice = purchased && total ? Number(total) / Number(purchased) : null
+  const subtotal = order?.subtotal_clp ?? suggestion?.subtotal_clp ?? null
+  const shipping = order?.shipping_cost_clp ?? suggestion?.shipping_cost_clp ?? null
+  const unitPrice = purchased && subtotal ? Number(subtotal) / Number(purchased) : null
   const lead = supplier?.lead_time_days ?? null
   const expected =
     order?.expected_at ?? (suggestion && lead !== null ? new Date(Date.parse(suggestion.created_at) + lead * DAY).toISOString() : null)
@@ -194,6 +196,8 @@ function OrderCard({ item, order, suggestion, catalog }: OrderCardProps) {
         <div>
           <dt>Total estimado (IVA incl.)</dt>
           <dd className="mono big">{formatCLP(total)}</dd>
+            <dt>Costo de formatos</dt><dd>{formatCLP(subtotal)}</dd>
+            <dt>Despacho fijo</dt><dd>{formatCLP(shipping)}</dd>
         </div>
         <div>
           <dt>Ahorro vs. siguiente opción</dt>
@@ -253,7 +257,7 @@ function explanation(s: Suggestion, unit: string, supplierName: string | undefin
   }
   if (Number(s.in_transit_qty) > 0) parts.push(`Descuenta ${formatQuantity(s.in_transit_qty, unit)} ya en tránsito.`)
   if (s.packs) parts.push('La cantidad ya está redondeada a formatos completos.')
-  if (supplierName) parts.push(`${supplierName} tiene el menor costo entre los precios vigentes (IVA incluido, sin despacho).`)
+  if (supplierName) parts.push(`${supplierName} tiene el menor costo entre los precios vigentes (IVA incluido y despacho fijo).`)
   return parts.join(' ')
 }
 
