@@ -47,6 +47,7 @@ const MESSAGES: Record<string, string> = {
   STALE_SUGGESTION: 'El inventario cambió desde que se generó la sugerencia: genera una nueva.',
   STALE_PRICES: 'Los precios cambiaron o vencieron desde que se generó la sugerencia: genera una nueva.',
   STALE_FORMAT: 'Cambió el mínimo de compra del producto: genera una nueva sugerencia.',
+  STALE_SHIPPING: 'Cambió el despacho del proveedor: genera una nueva sugerencia.',
   // Generales
   DATABASE_UNAVAILABLE: 'La base de datos no está disponible en este momento. Intenta de nuevo en unos minutos.',
   HTTP_404: 'La ruta no existe en el backend.',

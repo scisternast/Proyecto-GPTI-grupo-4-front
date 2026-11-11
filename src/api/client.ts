@@ -11,6 +11,31 @@ export function setAccessToken(token: string | null) {
   accessToken = token
 }
 
+export interface CsvResult { imported: number; movement_ids: number[]; replayed: boolean }
+export interface CsvRowError { row: number; code: string; message: string }
+
+export class CsvImportError extends Error {
+  readonly details: CsvRowError[]
+  constructor(message: string, details: CsvRowError[] = []) { super(message); this.details = details }
+}
+
+/** Send the original bytes so the server validates encoding, size and every row. */
+export async function importCsv(file: File): Promise<CsvResult> {
+  if (file.size > 1_048_576) throw new CsvImportError('El archivo supera el máximo de 1 MiB.')
+  const response = await globalThis.fetch(`${API_URL}/movements/import-csv`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/csv', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+    body: file,
+  })
+  if (response.status === 401) onUnauthorized()
+  const body = await response.json()
+  if (!response.ok) {
+    if (body.error?.code === 'CSV_REJECTED') throw new CsvImportError(body.error.message, body.error.details)
+    throw new ApiError(response.status, body)
+  }
+  return body as CsvResult
+}
+
 // Lo registra la sesión: un 401 fuera del login significa token vencido o inválido.
 let onUnauthorized: () => void = () => {}
 export function setUnauthorizedHandler(handler: () => void) {
