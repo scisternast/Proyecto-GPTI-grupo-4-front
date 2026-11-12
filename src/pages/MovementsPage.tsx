@@ -44,7 +44,7 @@ export function MovementsPage() {
         title="Movimientos"
       />
       {item.error && <ErrorMessage error={item.error} />}
-      <div className="split">
+      <div className="split split-history">
         <MovementForm item={item.data} />
         {item.data ? <History item={item.data} /> : <div className="card">{id !== null && <Loading />}</div>}
       </div>
@@ -220,7 +220,7 @@ function History({ item }: { item: ItemState }) {
               <th className="num">Cant.</th>
               <th className="num">Stock</th>
               <th>Detalle</th>
-              <th>Acción</th>
+              <th className="sticky-action">Acción</th>
             </tr>
           </thead>
           <tbody>
@@ -239,7 +239,8 @@ function History({ item }: { item: ItemState }) {
                   {/* `created_by` viene null hasta que exista el login. */}
                   <small className="muted">{row.created_by?.name ?? '—'}</small>
                 </td>
-                <td>
+                {/* Columna fija a la derecha: «Anular» se ve aunque la tabla tenga desplazamiento horizontal. */}
+                <td className="sticky-action">
                   {receiptOrder.has(row.id) && <small className="muted">Recepción {receiptOrder.get(row.id)}</small>}
                   {(row.kind === 'ENTRY' || row.kind === 'EXIT') && !row.invalidated && !receiptOrder.has(row.id) && (
                     <button
