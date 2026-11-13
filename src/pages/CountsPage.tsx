@@ -17,6 +17,7 @@ import {
   UNITS_BY_BASE,
 } from '../lib/format'
 import { COUNT_CAUSES } from '../lib/labels'
+import { clampToRecord } from '../lib/period'
 import { useSelectedItem } from '../state/useSelectedItem'
 
 export function CountsPage() {
@@ -136,7 +137,12 @@ function CountForm({ item }: { item: ItemState | undefined }) {
 function ShortageRate({ item }: { item: ItemState }) {
   const [start, setStart] = useState(() => daysAgoKey(30))
   const [end, setEnd] = useState(todayKey)
-  const rate = useShortageRate(item.id, start && dateInputToIso(start), end && dateInputToIso(end, true))
+  // El backend no calcula la tasa si el período empieza antes del registro del insumo: en ese caso se
+  // parte en el registro (con su hora exacta) y se avisa.
+  const period = start ? clampToRecord(dateInputToIso(start), item.observation_started_at) : null
+  const endIso = end ? dateInputToIso(end, true) : ''
+  const beforeRecord = period !== null && endIso !== '' && Date.parse(endIso) <= Date.parse(period.start)
+  const rate = useShortageRate(item.id, beforeRecord ? '' : (period?.start ?? ''), endIso)
 
   return (
     <div className="card">
@@ -153,7 +159,18 @@ function ShortageRate({ item }: { item: ItemState }) {
           </label>
         </div>
       </div>
-      {rate.isPending && <Loading />}
+      {beforeRecord ? (
+        <p className="muted">
+          {item.name} se registró el {formatShortDate(item.observation_started_at)}: elige un período que termine después.
+        </p>
+      ) : (
+        rate.isPending && <Loading />
+      )}
+      {period?.clamped && !beforeRecord && (
+        <p className="muted small">
+          Se calcula desde el {formatShortDate(item.observation_started_at)}, inicio del registro de {item.name}.
+        </p>
+      )}
       {rate.error && <ErrorMessage error={rate.error} />}
       {rate.data &&
         (rate.data.status === 'CALCULABLE' ? (
