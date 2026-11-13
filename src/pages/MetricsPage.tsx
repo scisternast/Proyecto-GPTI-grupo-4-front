@@ -246,10 +246,12 @@ function ItemsTable({ metrics: m }: { metrics: Metrics }) {
   const recordStart = (itemId: number) => items.data?.find((i) => i.id === itemId)?.observation_started_at ?? null
   const late = m.items.filter((row) => {
     const since = recordStart(row.item_id)
-    return row.shortage.status !== 'CALCULABLE' && since !== null && Date.parse(m.start) < Date.parse(since) && Date.parse(since) < Date.parse(m.end)
+    // `<=`: el backend tiene microsegundos y JavaScript milisegundos (ver clampToRecord).
+    return row.shortage.status !== 'CALCULABLE' && since !== null && Date.parse(m.start) <= Date.parse(since) && Date.parse(since) < Date.parse(m.end)
   })
   const fromRecord = useQueries({
-    queries: late.map((row) => shortageRateQuery(row.item_id, new Date(recordStart(row.item_id)!).toISOString(), new Date(m.end).toISOString())),
+    // Se envía el texto original de `observation_started_at` para no perder los microsegundos.
+    queries: late.map((row) => shortageRateQuery(row.item_id, recordStart(row.item_id)!, new Date(m.end).toISOString())),
   })
   const fallback = new Map(late.map((row, i) => [row.item_id, fromRecord[i]?.data]))
 

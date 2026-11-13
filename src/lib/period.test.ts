@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ItemState } from '../api/types'
 import { dayKey, daysAgoKey } from './format'
-import { defaultStart, periodStart } from './period'
+import { clampToRecord, defaultStart, periodStart } from './period'
 
 const item = (observation_started_at: string | null) => ({ observation_started_at }) as ItemState
 
@@ -32,5 +32,30 @@ describe('período por defecto de Métricas', () => {
     const first = '2026-07-27T11:00:00.000Z' // 08:00 en Chile
     expect(periodStart('2026-07-27', [item(first)])).toBe(first)
     expect(Date.parse(periodStart('2026-07-28', [item(first)]))).toBeGreaterThan(Date.parse(first))
+  })
+})
+
+describe('inicio de la tasa de merma (el backend usa microsegundos)', () => {
+  const record = '2026-11-10T14:03:22.123456Z'
+
+  it('un período que empieza antes del registro parte en el registro, con su texto original', () => {
+    expect(clampToRecord('2026-10-14T03:00:00.000Z', record)).toEqual({ start: record, clamped: true })
+  })
+
+  it('no redondea a milisegundos: «igual» en JavaScript puede ser unos µs antes para el backend', () => {
+    const truncated = new Date(record).toISOString() // 2026-11-10T14:03:22.123Z < 22.123456
+    expect(clampToRecord(truncated, record).start).toBe(record)
+  })
+
+  it('un período que empieza después del registro no cambia', () => {
+    expect(clampToRecord('2026-11-11T03:00:00.000Z', record)).toEqual({ start: '2026-11-11T03:00:00.000Z', clamped: false })
+  })
+
+  it('sin registro, no cambia', () => {
+    expect(clampToRecord('2026-11-11T03:00:00.000Z', null).clamped).toBe(false)
+  })
+
+  it('Métricas: el día del registro parte en el texto original del registro', () => {
+    expect(periodStart(dayKey(record), [item(record)])).toBe(record)
   })
 })

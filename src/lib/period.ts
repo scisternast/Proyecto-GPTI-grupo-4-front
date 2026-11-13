@@ -29,6 +29,21 @@ export function firstRecordAt(items: ItemState[]): string | undefined {
 export function periodStart(day: string, items: ItemState[]): string {
   const midnight = dateInputToIso(day)
   const first = firstRecordAt(items)
-  return first && dayKey(first) === day && Date.parse(first) > Date.parse(midnight) ? new Date(first).toISOString() : midnight
+  return first && dayKey(first) === day && !(Date.parse(first) < Date.parse(midnight)) ? first : midnight
+}
+
+/**
+ * Inicio de la tasa de merma de un insumo: si `start` es anterior al inicio de su registro
+ * (`observation_started_at`), parte en el registro, porque el backend no calcula períodos que empiezan
+ * antes de que el insumo tenga historia.
+ *
+ * Se devuelve el texto original del backend, no `new Date(...).toISOString()`: el backend guarda
+ * microsegundos (…:22.123456Z) y JavaScript solo milisegundos. Redondear deja el inicio unos µs ANTES del
+ * registro y el backend responde «No calculable». Por eso la comparación usa `<=`: a la precisión de
+ * JavaScript, «igual» puede ser un poco antes.
+ */
+export function clampToRecord(start: string, recordStart: string | null | undefined): { start: string; clamped: boolean } {
+  if (recordStart && Date.parse(start) <= Date.parse(recordStart)) return { start: recordStart, clamped: Date.parse(start) < Date.parse(recordStart) }
+  return { start, clamped: false }
 }
 
