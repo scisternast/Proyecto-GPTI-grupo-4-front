@@ -22,9 +22,9 @@ export type BaseUnit = ItemState['base_unit']
 export type CountCause = NonNullable<CountCreate['cause']>
 
 // Proveedores, productos y precios
-export type Supplier = Schemas['SupplierResponse'] & { shipping_cost_clp?: string }
-export type SupplierCreate = Schemas['SupplierCreate'] & { shipping_cost_clp?: string }
-export type SupplierUpdate = Schemas['SupplierUpdate'] & { shipping_cost_clp?: string }
+export type Supplier = Schemas['SupplierResponse']
+export type SupplierCreate = Schemas['SupplierCreate']
+export type SupplierUpdate = Schemas['SupplierUpdate']
 export type Adapter = NonNullable<SupplierCreate['adapter']>
 export type SupplierProduct = Schemas['SupplierProductResponse']
 export type SupplierProductCreate = Schemas['SupplierProductCreate']
@@ -51,9 +51,12 @@ export interface PriceOption {
   packs: number
   purchased_quantity: string
   base_unit: BaseUnit
-  total_clp: string
+  /** Formatos × precio por formato (IVA incluido). Falta en sugerencias anteriores al despacho. */
   subtotal_clp?: string
+  /** Despacho fijo del proveedor, sumado una sola vez por orden (RN-10). */
   shipping_cost_clp: string
+  /** subtotal + despacho: el costo con que se comparan los proveedores. */
+  total_clp: string
   observed_at: string
 }
 
@@ -79,10 +82,20 @@ export interface ScrapeRunProductResult {
 }
 
 // Órdenes y sugerencias
-export type Order = Schemas['OrderResponse'] & { subtotal_clp?: string | null; shipping_cost_clp?: string | null }
+export type Order = Schemas['OrderResponse']
 export type OrderReceipt = Schemas['OrderReceiptCreate']
-export type Suggestion = Schemas['SuggestionResponse'] & { subtotal_clp?: string | null; shipping_cost_clp?: string | null }
+export type Suggestion = Schemas['SuggestionResponse']
 export type Decision = Schemas['DecisionCreate']['decision']
+
+// Importación CSV de movimientos (REQ-18, RN-19)
+export type CsvImportResult = Schemas['CsvImportResponse']
+
+/** Error de una fila del CSV (`error.details` cuando `error.code` es CSV_REJECTED). Fila 0 = todo el archivo. */
+export interface CsvRowError {
+  row: number
+  code: string
+  message: string
+}
 
 /**
  * `Suggestion.inputs_snapshot` llega como `dict`. El backend congela ahí el estado usado para
@@ -97,6 +110,7 @@ export interface SuggestionSnapshot {
   }
   prices: { comparison: PriceComparison }
   taxes: 'VAT_INCLUDED'
+  /** EXCLUDED en sugerencias anteriores a RN-10; FIXED_PER_SUPPLIER_ONCE desde que se suma el despacho. */
   dispatch: 'EXCLUDED' | 'FIXED_PER_SUPPLIER_ONCE'
 }
 

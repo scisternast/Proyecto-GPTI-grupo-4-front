@@ -558,6 +558,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/movements/import-csv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Csv */
+        post: operations["upload_csv_movements_import_csv_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -808,6 +825,15 @@ export interface components {
             /** Created By */
             created_by: number | null;
         };
+        /** CsvImportResponse */
+        CsvImportResponse: {
+            /** Imported */
+            imported: number;
+            /** Movement Ids */
+            movement_ids: number[];
+            /** Replayed */
+            replayed: boolean;
+        };
         /** DecisionCreate */
         DecisionCreate: {
             /**
@@ -1023,6 +1049,10 @@ export interface components {
             packs: number | null;
             /** Purchased Qty */
             purchased_qty: string | null;
+            /** Subtotal Clp */
+            subtotal_clp: string | null;
+            /** Shipping Cost Clp */
+            shipping_cost_clp: string | null;
             /** Total Clp */
             total_clp: string | null;
             /** Decided By */
@@ -1230,6 +1260,10 @@ export interface components {
             packs: number | null;
             /** Purchased Qty */
             purchased_qty: string | null;
+            /** Subtotal Clp */
+            subtotal_clp: string | null;
+            /** Shipping Cost Clp */
+            shipping_cost_clp: string | null;
             /** Total Clp */
             total_clp: string | null;
             /** Next Best Total Clp */
@@ -1262,6 +1296,11 @@ export interface components {
             price_source_url?: string | null;
             /** Lead Time Days */
             lead_time_days: number;
+            /**
+             * Shipping Cost Clp
+             * @default 0
+             */
+            shipping_cost_clp: number | string;
             /** Adapter */
             adapter?: ("central" | "jumbo" | "santa_isabel") | null;
             /**
@@ -1336,6 +1375,8 @@ export interface components {
             price_source_url: string | null;
             /** Lead Time Days */
             lead_time_days: number;
+            /** Shipping Cost Clp */
+            shipping_cost_clp: string;
             /** Adapter */
             adapter: string | null;
             /** Is Active */
@@ -1359,6 +1400,8 @@ export interface components {
             price_source_url?: string | null;
             /** Lead Time Days */
             lead_time_days?: number | null;
+            /** Shipping Cost Clp */
+            shipping_cost_clp?: number | string | null;
             /** Adapter */
             adapter?: ("central" | "jumbo" | "santa_isabel") | null;
             /** Is Active */
@@ -5290,6 +5333,120 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Method Not Allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upload_csv_movements_import_csv_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "text/csv": string;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CsvImportResponse"];
                 };
             };
             /** @description Bad Request */

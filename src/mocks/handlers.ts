@@ -4,6 +4,7 @@ import { http, HttpResponse, type JsonBodyType } from 'msw'
 import { API_URL } from '../api/client'
 import type {
   CountCreate,
+  CsvRowError,
   ItemCreate,
   ItemState,
   ItemUpdate,
@@ -15,6 +16,7 @@ import type {
   SupplierProductUpdate,
   SupplierUpdate,
 } from '../api/types'
+import { CSV_MAX_BYTES, type CsvPreviewRow, readCsv } from '../lib/csv'
 import { createDb, MockError, PASSWORD } from './db'
 
 const url = (path: string) => `${API_URL}${path}`
@@ -22,10 +24,13 @@ const now = () => new Date().toISOString()
 const toBase: Record<string, number> = { kg: 1, g: 0.001, L: 1, mL: 0.001, unidad: 1 }
 
 let db = createDb()
+/** Cargas CSV exitosas por contenido normalizado: repetir el archivo no duplica movimientos. */
+let csvImports = new Map<string, number[]>()
 
 /** Vuelve a los datos de ejemplo (para los tests). */
 export function resetMockDb() {
   db = createDb()
+  csvImports = new Map()
 }
 
 function fail(status: number, code: string, message: string) {
@@ -58,6 +63,61 @@ function handle(fn: () => JsonBodyType, status = 200) {
     if (error instanceof MockError) return fail(error.status, error.code, error.message)
     throw error
   }
+}
+
+const UNIT_FAMILY: Record<string, string> = { kg: 'kg', g: 'kg', L: 'L', mL: 'L', unidad: 'unidad' }
+
+/** Entrada o salida manual (POST /movements) o de una fila CSV: mismas reglas RN-12, RN-13 y RN-14. */
+function applyMovement(body: MovementCreate, user: User | null) {
+  const item = db.getItemRow(body.item_id)
+  if (UNIT_FAMILY[body.unit] !== item.base_unit) throw new MockError(422, 'INVALID_UNIT', 'Unit is not compatible with the item')
+  if (body.occurred_at && Date.parse(body.occurred_at) > Date.now()) {
+    throw new MockError(422, 'FUTURE_MOVEMENT', 'Movement cannot occur in the future')
+  }
+  if (body.occurred_at && Date.parse(body.occurred_at) < Date.parse(item.observation_started_at)) {
+    throw new MockError(422, 'BEFORE_INITIAL_STOCK', 'Movement cannot precede active initial stock')
+  }
+  const quantity = Number(body.quantity) * (toBase[body.unit] ?? 1)
+  const delta = body.kind === 'EXIT' ? -quantity : quantity
+  if (db.stockOf(item.id) + delta < 0) throw new MockError(409, 'NEGATIVE_STOCK', 'Insufficient stock')
+  const occurredAt = body.occurred_at ?? now()
+  const ledger = db.movementsOf(item.id)
+  const balanceThen = ledger.filter((m) => Date.parse(m.occurred_at) <= Date.parse(occurredAt)).reduce((total, m) => total + Number(m.delta), 0)
+  const negativeLater = ledger.some((m) => Date.parse(m.occurred_at) > Date.parse(occurredAt) && Number(m.balance_after) + delta < 0)
+  if (body.kind === 'EXIT' && (balanceThen + delta < -1e-9 || negativeLater)) {
+    throw new MockError(409, 'HISTORICAL_NEGATIVE_STOCK', 'Stock would be negative in history')
+  }
+  return db.addMovement(
+    item.id,
+    {
+      kind: body.kind,
+      delta: String(delta),
+      input_quantity: String(Number(body.quantity)),
+      input_unit: body.unit,
+      occurred_at: occurredAt,
+      note: body.note ?? null,
+    },
+    user,
+  )
+}
+
+/** Validación de formato de una fila CSV (mismos mensajes que el backend). */
+function csvRowProblem(row: CsvPreviewRow): string | null {
+  if (!/^[1-9][0-9]{0,17}$/.test(row.insumo)) return 'insumo debe ser un ID entero positivo'
+  if (!/^[0-9]+(?:[.,][0-9]+)?$/.test(row.cantidad)) return 'cantidad debe ser un número positivo sin separador de miles'
+  if (Number(row.cantidad.replace(',', '.')) <= 0) return 'cantidad debe ser mayor a cero'
+  if (row.tipo !== 'ENTRADA' && row.tipo !== 'SALIDA') return 'tipo debe ser ENTRADA o SALIDA'
+  if (!(row.unidad in UNIT_FAMILY)) return 'unidad debe ser kg, g, L, mL o unidad'
+  if (row.observacion.length > 2000) return 'observacion admite hasta 2000 caracteres'
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(row.fecha) && (!/(Z|[+-]\d{2}:\d{2})$/.test(row.fecha) || Number.isNaN(Date.parse(row.fecha)))) {
+    return 'fecha necesita zona horaria o formato AAAA-MM-DD'
+  }
+  return null
+}
+
+/** AAAA-MM-DD = inicio del día (el backend usa America/Santiago; el mock, la zona del navegador). */
+function csvDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`).toISOString() : new Date(value).toISOString()
 }
 
 function alertOf(item: ItemState) {
@@ -148,27 +208,56 @@ export const handlers = [
   // --- Movimientos y conteos ---
   http.post(url('/movements'), async ({ request }) => {
     const body = (await request.json()) as MovementCreate
-    return handle(() => {
-      const item = db.getItemRow(body.item_id)
-      if (body.occurred_at && Date.parse(body.occurred_at) > Date.now()) {
-        throw new MockError(422, 'FUTURE_MOVEMENT', 'Movement cannot occur in the future')
+    return handle(() => applyMovement(body, userFrom(request)), 201)
+  }),
+
+  // Importación CSV (RN-19), como backend/app/services/csv_imports.py: filas en orden, con el stock que dejan
+  // las anteriores; si alguna falla no se registra ninguna y se informan todas las filas con error.
+  http.post(url('/movements/import-csv'), async ({ request }) => {
+    const user = userFrom(request)
+    if (!user) return fail(401, 'UNAUTHENTICATED', 'Missing or invalid token')
+    const rejected = (status: number, details: CsvRowError[]) =>
+      HttpResponse.json({ error: { code: 'CSV_REJECTED', message: 'No se registró ningún movimiento', details } }, { status })
+    if ((request.headers.get('content-type') ?? '').split(';')[0].toLowerCase() !== 'text/csv') {
+      return rejected(415, [{ row: 0, code: 'CSV_CONTENT_TYPE', message: 'Use Content-Type text/csv' }])
+    }
+    const text = await request.text()
+    if (new TextEncoder().encode(text).length > CSV_MAX_BYTES) {
+      return rejected(413, [{ row: 0, code: 'CSV_TOO_LARGE', message: 'Máximo 1 MiB por archivo' }])
+    }
+    const read = readCsv(text.replace(/^\uFEFF/, ''))
+    if (!read.ok) return rejected(422, [{ row: 0, code: 'CSV_HEADER', message: read.message }])
+
+    const errors: CsvRowError[] = []
+    const parsed = read.rows.flatMap((row) => {
+      const problem = csvRowProblem(row)
+      if (problem) {
+        errors.push({ row: row.row, code: 'CSV_ROW', message: problem })
+        return []
       }
-      const quantity = Number(body.quantity) * (toBase[body.unit] ?? 1)
-      const delta = body.kind === 'EXIT' ? -quantity : quantity
-      if (db.stockOf(item.id) + delta < 0) throw new MockError(409, 'NEGATIVE_STOCK', 'Insufficient stock')
-      return db.addMovement(
-        item.id,
-        {
-          kind: body.kind,
-          delta: String(delta),
-          input_quantity: String(Number(body.quantity)),
-          input_unit: body.unit,
-          occurred_at: body.occurred_at ?? now(),
-          note: body.note ?? null,
-        },
-        userFrom(request),
-      )
-    }, 201)
+      return [{ row: row.row, item_id: row.itemId!, quantity: Number(row.cantidad.replace(',', '.')), unit: row.unidad, kind: row.tipo === 'ENTRADA' ? 'ENTRY' : 'EXIT', occurred_at: csvDate(row.fecha), note: row.observacion || null }]
+    })
+    const key = JSON.stringify(parsed.map(({ row: _row, ...rest }) => rest))
+    if (errors.length === 0 && csvImports.has(key)) {
+      const ids = csvImports.get(key)!
+      return HttpResponse.json({ imported: ids.length, movement_ids: ids, replayed: true })
+    }
+    const before = db.movements.length
+    const ids: number[] = []
+    for (const row of parsed) {
+      try {
+        ids.push(applyMovement({ ...row, kind: row.kind as 'ENTRY' | 'EXIT', quantity: String(row.quantity) }, user).id)
+      } catch (error) {
+        if (!(error instanceof MockError)) throw error
+        errors.push({ row: row.row, code: error.code, message: error.message })
+      }
+    }
+    if (errors.length > 0) {
+      db.movements.splice(before) // todo o nada
+      return rejected(422, errors.sort((a, b) => a.row - b.row))
+    }
+    csvImports.set(key, ids)
+    return HttpResponse.json({ imported: ids.length, movement_ids: ids, replayed: false })
   }),
 
   http.post(url('/movements/:id/reverse'), ({ params, request }) =>
@@ -236,6 +325,7 @@ export const handlers = [
         name: body.name,
         price_source_url: body.price_source_url ?? null,
         lead_time_days: body.lead_time_days,
+        shipping_cost_clp: String(Number(body.shipping_cost_clp ?? 0)),
         adapter: body.adapter ?? null,
         is_active: body.is_active ?? true,
         created_at: now(),
@@ -255,7 +345,11 @@ export const handlers = [
       if (body.name && db.suppliers.some((s) => s.name === body.name && s.id !== supplier.id)) {
         throw new MockError(409, 'SUPPLIER_EXISTS', 'Duplicated name')
       }
+      if (body.shipping_cost_clp === null || Number(body.shipping_cost_clp) < 0) {
+        throw new MockError(422, 'INVALID_UPDATE', 'Shipping cost must be zero or positive')
+      }
       Object.assign(supplier, body, { updated_at: now() })
+      if (body.shipping_cost_clp !== undefined) supplier.shipping_cost_clp = String(Number(body.shipping_cost_clp))
       return supplier
     })
   }),

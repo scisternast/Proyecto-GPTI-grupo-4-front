@@ -69,3 +69,17 @@ export const ADAPTERS = [
   { value: 'jumbo', label: 'Jumbo' },
   { value: 'santa_isabel', label: 'Santa Isabel' },
 ] as const
+
+/**
+ * Costo de los formatos de una opción (RN-10): formatos completos × precio por formato, IVA incluido.
+ * Las comparaciones anteriores al despacho no traen `subtotal_clp`; ahí el total era solo formatos.
+ */
+export function optionSubtotal(option: { subtotal_clp?: string | null; total_clp: string; shipping_cost_clp?: string | null }): number {
+  if (option.subtotal_clp != null) return Number(option.subtotal_clp)
+  return Number(option.total_clp) - Number(option.shipping_cost_clp ?? 0)
+}
+
+/** «$7.000» o «Gratis» para el despacho fijo de un proveedor. */
+export function shippingLabel(value: string | number | null | undefined, format: (v: string | number) => string): string {
+  return value == null ? '—' : Number(value) > 0 ? format(value) : 'Gratis'
+}

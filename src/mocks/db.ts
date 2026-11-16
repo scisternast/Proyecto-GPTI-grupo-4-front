@@ -86,20 +86,22 @@ export function createDb() {
   const ref = (user: User | null) => (user ? { id: user.id, name: user.name } : null)
 
   // Proveedores validados (§12). Entrega: A 2, B 4 y C 3 días, como en el mockup.
-  const supplier = (name: string, url: string, lead: number, adapter: Supplier['adapter']): Supplier => ({
+  // Despacho fijo por orden (RN-10): Central Mayorista gratis, Jumbo $3.990 y Santa Isabel $2.990.
+  const supplier = (name: string, url: string, lead: number, adapter: Supplier['adapter'], shipping: number): Supplier => ({
     id: id(),
     name,
     price_source_url: url,
     lead_time_days: lead,
+    shipping_cost_clp: dec(shipping),
     adapter,
     is_active: true,
     created_at: daysAgo(60),
     updated_at: daysAgo(60),
   })
   const suppliers: Supplier[] = [
-    supplier('Central Mayorista', 'https://www.centralmayorista.cl', 2, 'central'),
-    supplier('Jumbo', 'https://www.jumbo.cl', 4, 'jumbo'),
-    supplier('Santa Isabel', 'https://www.santaisabel.cl', 3, 'santa_isabel'),
+    supplier('Central Mayorista', 'https://www.centralmayorista.cl', 2, 'central', 0),
+    supplier('Jumbo', 'https://www.jumbo.cl', 4, 'jumbo', 3990),
+    supplier('Santa Isabel', 'https://www.santaisabel.cl', 3, 'santa_isabel', 2990),
   ]
   const [central, jumbo, santaIsabel] = suppliers
 
@@ -551,6 +553,9 @@ export function createDb() {
       })
       if (state === 'CURRENT' && required !== null) {
         const packs = required === 0 ? 0 : Math.max(product.min_packs, Math.ceil(round6(required / pack)))
+        // RN-10: formatos × precio + despacho fijo del proveedor, una sola vez por orden (0 si no se compra).
+        const subtotal = packs * quote!.pack_price_clp
+        const shipping = packs > 0 ? Number(sup.shipping_cost_clp) : 0
         options.push({
           supplier_id: sup.id,
           supplier_product_id: product.id,
@@ -559,8 +564,9 @@ export function createDb() {
           packs,
           purchased_quantity: dec(packs * pack),
           base_unit: view.base_unit,
-          total_clp: dec(packs * quote!.pack_price_clp),
-          shipping_cost_clp: '0',
+          subtotal_clp: dec(subtotal),
+          shipping_cost_clp: dec(shipping),
+          total_clp: dec(subtotal + shipping),
           observed_at: quote!.observed_at,
         })
       }
@@ -615,6 +621,8 @@ export function createDb() {
       required_qty: data.purchased_qty!,
       in_transit_qty: '0',
       packs: Number(data.purchased_qty),
+      subtotal_clp: null,
+      shipping_cost_clp: null,
       next_best_total_clp: null,
       savings_clp: null,
       inputs_snapshot: {},
@@ -638,7 +646,7 @@ export function createDb() {
       prices: pricesNow,
       products: products.filter((p) => p.item_id === itemId),
       taxes: 'VAT_INCLUDED',
-      dispatch: 'EXCLUDED',
+      dispatch: 'FIXED_PER_SUPPLIER_ONCE',
     }
   }
 
@@ -659,6 +667,8 @@ export function createDb() {
       supplier_product_id: best.supplier_product_id,
       packs: best.packs,
       purchased_qty: best.purchased_quantity,
+      subtotal_clp: best.subtotal_clp ?? null,
+      shipping_cost_clp: best.shipping_cost_clp,
       total_clp: best.total_clp,
       next_best_total_clp: comparison.next_best_total_clp ?? null,
       savings_clp: comparison.savings_clp ?? null,
@@ -679,6 +689,8 @@ export function createDb() {
       supplier_product_id: row.supplier_product_id,
       packs: row.packs,
       purchased_qty: row.purchased_qty,
+      subtotal_clp: row.subtotal_clp,
+      shipping_cost_clp: row.shipping_cost_clp,
       total_clp: row.total_clp,
       decided_by: user.id,
       decided_at: decidedAt,
@@ -706,6 +718,11 @@ export function createDb() {
       const frozen = snapshotOf(row).inventory?.current_stock
       if (frozen !== undefined && Number(frozen) !== stockOf(row.item_id)) {
         throw new MockError(409, 'STALE_SUGGESTION', 'Inventory changed; reject and regenerate')
+      }
+      // Como el backend: si cambió el despacho del proveedor recomendado, hay que generar otra.
+      const product = products.find((p) => p.id === row.supplier_product_id)
+      if (product && row.shipping_cost_clp !== null && Number(getSupplier(product.supplier_id).shipping_cost_clp) !== Number(row.shipping_cost_clp)) {
+        throw new MockError(409, 'STALE_SHIPPING', 'Cambió el despacho; vuelva a generar')
       }
       approve(row, user)
     } else Object.assign(row, { status: 'REJECTED', rejection_reason: reason, decided_by: user.id, decided_at: now() })

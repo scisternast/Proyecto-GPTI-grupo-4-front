@@ -5,11 +5,12 @@ import { HorizontalBars } from '../components/Charts'
 import { Badge, ErrorMessage, Loading, PageHeader } from '../components/Feedback'
 import { ItemSelect } from '../components/ItemSelect'
 import { dayKey, formatCLP, formatDateTime, formatPercent, formatQuantity, formatShortDate, todayKey, UNIT_LABEL } from '../lib/format'
-import { lastResultFor, PRICE_STATE, scrapeErrorMessage } from '../lib/procurement'
+import { lastResultFor, optionSubtotal, PRICE_STATE, scrapeErrorMessage, shippingLabel } from '../lib/procurement'
 import { useSelectedItem } from '../state/useSelectedItem'
 
-// E3: precios con IVA y despacho fijo por proveedor, solo vigentes y con al menos
-// 2 proveedores distintos (Arquitectura.md §4.3). La comparación la calcula el backend.
+// Mockup «Comparar precios». Precios con IVA (C14), solo vigentes y con al menos 2 proveedores distintos
+// (Arquitectura.md §4.3). RN-10: el total de cada proveedor es formatos completos × precio por formato más su
+// despacho fijo, sumado una sola vez por orden; se muestran por separado. La comparación la calcula el backend.
 export function PricesPage() {
   const { id } = useSelectedItem()
   const item = useItem(id)
@@ -85,6 +86,7 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
     best && comparison.options.find((o) => o.supplier_id !== best.supplier_id && o.total_clp === comparison.next_best_total_clp)
   const product = new Map(products.map((p) => [p.id, p]))
   const leadTime = new Map(suppliers.map((s) => [s.id, s.lead_time_days]))
+  const shipping = new Map(suppliers.map((s) => [s.id, s.shipping_cost_clp]))
   const expired = data.offers.filter((o) => o.state === 'EXPIRED')
   const currentSuppliers = new Set(comparison.options.map((o) => o.supplier_id)).size
 
@@ -117,17 +119,21 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
       <ComparisonStatus status={comparison.status} currentSuppliers={currentSuppliers} />
 
       <div className="card">
+        <p className="muted small">
+          Precios con IVA incluido{qty && ` para ${qty}`}. Total = formatos + despacho, que se suma una vez por orden.
+        </p>
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Proveedor</th>
-                <th className="num">Precio / {unit} (IVA incl.)</th>
-                <th>Fecha</th>
-                <th>Vigente hasta</th>
-                <th className="num">Total{qty && ` (${qty})`}</th>
+                <th className="num">Precio / {unit}</th>
+                <th>Obtenido</th>
+                <th className="num">Formatos</th>
+                <th className="num">Despacho</th>
+                <th className="num">Total</th>
                 <th>Entrega</th>
-                <th>Estado del precio</th>
+                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
@@ -153,20 +159,27 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
                       )}
                     </td>
                     <td className="num mono">{formatCLP(offer.unit_price_clp)}</td>
-                    <td>{formatShortDate(offer.observed_at)}</td>
-                    <td>{formatShortDate(offer.valid_until)}</td>
+                    <td className="nowrap">
+                      {formatShortDate(offer.observed_at)}
+                      <small className="block muted">hasta {formatShortDate(offer.valid_until)}</small>
+                    </td>
                     <td className="num mono">
                       {option ? (
                         <>
-                          {isBest ? <strong>{formatCLP(option.total_clp)}</strong> : formatCLP(option.total_clp)}
+                          {formatCLP(optionSubtotal(option))}
                           <small className="block muted">
                             {option.packs} × {formatQuantity(offer.pack_quantity, item.base_unit)}
                           </small>
-                          <small className="block muted">Formatos: {formatCLP(option.subtotal_clp)} · Despacho: {formatCLP(option.shipping_cost_clp)}</small>
                         </>
                       ) : (
                         'Excluido'
                       )}
+                    </td>
+                    <td className="num mono">
+                      {shippingLabel(option ? option.shipping_cost_clp : shipping.get(offer.supplier_id), formatCLP)}
+                    </td>
+                    <td className="num mono">
+                      {option ? isBest ? <strong>{formatCLP(option.total_clp)}</strong> : formatCLP(option.total_clp) : '—'}
                     </td>
                     <td>{leadTime.has(offer.supplier_id) ? `${leadTime.get(offer.supplier_id)} días` : '—'}</td>
                     <td>
@@ -192,7 +205,7 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
                 value: Number(option.total_clp),
                 valueLabel: formatCLP(option.total_clp),
                 highlight: option.supplier_product_id === best?.supplier_product_id,
-                detail: `${option.packs} formatos · ${formatQuantity(option.purchased_quantity, item.base_unit)}`,
+                detail: `${option.packs} formatos (${formatCLP(optionSubtotal(option))}) + despacho ${shippingLabel(option.shipping_cost_clp, formatCLP).toLowerCase()} · ${formatQuantity(option.purchased_quantity, item.base_unit)}`,
               }))}
             />
           ) : (
@@ -209,10 +222,11 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
               ))}
           </ul>
           <p className="footnote">
-            Total = precio del formato × formatos completos + despacho fijo una sola vez. Los precios incluyen IVA,
-            tal como los publican los sitios de los proveedores. Cada precio se obtiene por Web Scraping y vale 7 días;
-            si el sitio falla se usa el último precio mientras siga vigente. Se suma el despacho fijo del proveedor; el
-            scraping no lo obtiene.
+            Total = precio del formato × formatos completos para cubrir la cantidad sugerida + despacho fijo del
+            proveedor, que se suma una sola vez por orden. Los precios incluyen IVA, tal como los publican los sitios de
+            los proveedores, y no se consideran descuentos especiales. Cada precio se obtiene por Web Scraping y vale 7
+            días; si el sitio falla se usa el último precio mientras siga vigente. El despacho se configura en
+            Proveedores.
           </p>
         </div>
 
@@ -225,7 +239,8 @@ function Comparison({ item, data, suppliers, products, runs }: ComparisonProps) 
               </p>
               <p className="muted">
                 Comprando {formatQuantity(best.purchased_quantity, item.base_unit)} a {best.supplier} (
-                {formatCLP(best.total_clp)}) en lugar de {nextBest.supplier} ({formatCLP(nextBest.total_clp)}).
+                {formatCLP(best.total_clp)} con despacho) en lugar de {nextBest.supplier} ({formatCLP(nextBest.total_clp)}{' '}
+                con despacho).
               </p>
             </>
           ) : (

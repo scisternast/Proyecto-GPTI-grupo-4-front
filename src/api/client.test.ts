@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { buildLedger, formatMovementNote } from '../lib/ledger'
 import { handlers, resetMockDb } from '../mocks/handlers'
 import { api, setAccessToken, unwrap } from './client'
-import { ApiError } from './errors'
+import { ApiError, csvRowErrors } from './errors'
 import type { ItemState, Metrics, Movement, PriceComparison } from './types'
 
 const PASSWORD = 'stocksmart-demo'
@@ -112,7 +112,7 @@ describe('escenario de los mockups (Arquitectura.md §4.3)', () => {
     expect(Number(pollo.assessment.suggested_quantity)).toBe(9)
   })
 
-  it('compara solo precios vigentes, con IVA y sin despacho', async () => {
+  it('compara solo precios vigentes, con IVA y sumando el despacho una vez por orden (RN-10)', async () => {
     const pollo = await itemNamed(POLLO)
     const prices = await unwrap(api.GET('/prices/{item_id}', { params: { path: { item_id: pollo.id } } }))
     const comparison = prices.comparison as unknown as PriceComparison
@@ -121,9 +121,38 @@ describe('escenario de los mockups (Arquitectura.md §4.3)', () => {
       Jumbo: 'CURRENT',
       'Santa Isabel': 'EXPIRED',
     })
+    // Jumbo: $107.100 en formatos + $3.990 de despacho; Central Mayorista: $112.410 con despacho gratis.
     expect(comparison.recommended?.supplier).toBe('Jumbo')
-    expect(Number(comparison.recommended?.total_clp)).toBe(107_100)
-    expect(Number(comparison.savings_clp)).toBe(5_310)
+    expect(Number(comparison.recommended?.subtotal_clp)).toBe(107_100)
+    expect(Number(comparison.recommended?.shipping_cost_clp)).toBe(3_990)
+    expect(Number(comparison.recommended?.total_clp)).toBe(111_090)
+    expect(Number(comparison.savings_clp)).toBe(1_320)
+  })
+
+  it('el despacho puede cambiar el proveedor recomendado (ejemplo de RN-10)', async () => {
+    const pollo = await itemNamed(POLLO)
+    const jumbo = (await unwrap(api.GET('/suppliers'))).find((s) => s.name === 'Jumbo')!
+    await unwrap(api.PATCH('/suppliers/{supplier_id}', { params: { path: { supplier_id: jumbo.id } }, body: { shipping_cost_clp: '7000' } }))
+    const prices = await unwrap(api.GET('/prices/{item_id}', { params: { path: { item_id: pollo.id } } }))
+    const comparison = prices.comparison as unknown as PriceComparison
+    expect(comparison.recommended?.supplier).toBe('Central Mayorista')
+    expect(Number(comparison.savings_clp)).toBe(107_100 + 7_000 - 112_410)
+  })
+
+  it('la sugerencia y la orden guardan formatos y despacho por separado; si cambia el despacho, aprobar responde STALE_SHIPPING', async () => {
+    const pollo = await itemNamed(POLLO)
+    const suggestion = await pendingSuggestion(pollo.id)
+    expect([suggestion.subtotal_clp, suggestion.shipping_cost_clp, suggestion.total_clp].map(Number)).toEqual([107_100, 3_990, 111_090])
+    const jumbo = (await unwrap(api.GET('/suppliers'))).find((s) => s.name === 'Jumbo')!
+    await unwrap(api.PATCH('/suppliers/{supplier_id}', { params: { path: { supplier_id: jumbo.id } }, body: { shipping_cost_clp: '0' } }))
+    const error = await failure(
+      unwrap(api.POST('/suggestions/{suggestion_id}/decision', { params: { path: { suggestion_id: suggestion.id } }, body: { decision: 'APPROVE' } })),
+    )
+    expect(error?.code).toBe('STALE_SHIPPING')
+    await unwrap(api.PATCH('/suppliers/{supplier_id}', { params: { path: { supplier_id: jumbo.id } }, body: { shipping_cost_clp: '3990' } }))
+    await unwrap(api.POST('/suggestions/{suggestion_id}/decision', { params: { path: { suggestion_id: suggestion.id } }, body: { decision: 'APPROVE' } }))
+    const order = (await unwrap(api.GET('/orders'))).find((o) => o.suggestion_id === suggestion.id)!
+    expect([order.subtotal_clp, order.shipping_cost_clp, order.total_clp].map(Number)).toEqual([107_100, 3_990, 111_090])
   })
 
   it('aprobar crea la orden OC-0013, deja el insumo en tránsito y la recepción suma stock', async () => {
@@ -195,6 +224,47 @@ describe('escenario de los mockups (Arquitectura.md §4.3)', () => {
     await loginAs('bodega@negocio.cl')
     const error = await failure(unwrap(api.GET('/metrics', { params: { query: { start: '2026-01-01T00:00:00Z', end: '2026-02-01T00:00:00Z' } } })))
     expect(error?.status).toBe(403)
+  })
+})
+
+describe('importación CSV (RN-19)', () => {
+  const importCsv = (csv: string) =>
+    unwrap(api.POST('/movements/import-csv', { body: csv, bodySerializer: (b) => b, headers: { 'Content-Type': 'text/csv' } }))
+  const today = new Date().toISOString().slice(0, 10)
+
+  it('importa las filas en orden, con el stock acumulado y conversión de unidades', async () => {
+    const pollo = await itemNamed(POLLO)
+    const result = await importCsv(
+      `insumo,cantidad,unidad,tipo,fecha,observacion\n${pollo.id},4,kg,ENTRADA,${new Date(Date.now() - 60_000).toISOString()},Recepción\n${pollo.id},12,kg,SALIDA,${new Date(Date.now() - 30_000).toISOString()},"Consumo, evento"\n${pollo.id},500,g,SALIDA,${new Date(Date.now() - 1_000).toISOString()},\n`,
+    )
+    expect([result.imported, result.replayed]).toEqual([3, false])
+    expect(Number((await itemNamed(POLLO)).current_stock)).toBe(9 + 4 - 12 - 0.5)
+  })
+
+  it('es todo o nada: si una fila deja el stock bajo cero no se registra ninguna y se informan las filas', async () => {
+    const pollo = await itemNamed(POLLO)
+    const before = (await unwrap(api.GET('/items/{item_id}/movements', { params: { path: { item_id: pollo.id } } }))).length
+    const error = await failure(
+      importCsv(`insumo,cantidad,unidad,tipo,fecha,observacion\n${pollo.id},2,kg,SALIDA,${today},\n${pollo.id},50,kg,SALIDA,${new Date().toISOString()},\n${pollo.id},abc,kg,SALIDA,${today},\n`),
+    )
+    expect([error?.status, error?.code]).toEqual([422, 'CSV_REJECTED'])
+    expect(csvRowErrors(error)?.map((e) => e.row)).toEqual([2, 3])
+    expect(Number((await itemNamed(POLLO)).current_stock)).toBe(9)
+    expect((await unwrap(api.GET('/items/{item_id}/movements', { params: { path: { item_id: pollo.id } } }))).length).toBe(before)
+  })
+
+  it('repetir una carga exitosa no duplica movimientos', async () => {
+    const pollo = await itemNamed(POLLO)
+    const csv = `insumo;cantidad;unidad;tipo;fecha;observacion\n${pollo.id};1,5;kg;SALIDA;${new Date(Date.now() - 1_000).toISOString()};\n`
+    await importCsv(csv)
+    const again = await importCsv(csv)
+    expect([again.imported, again.replayed]).toEqual([1, true])
+    expect(Number((await itemNamed(POLLO)).current_stock)).toBe(7.5)
+  })
+
+  it('rechaza un encabezado distinto', async () => {
+    const error = await failure(importCsv('item,qty\n1,2\n'))
+    expect(csvRowErrors(error)?.[0].row).toBe(0)
   })
 })
 

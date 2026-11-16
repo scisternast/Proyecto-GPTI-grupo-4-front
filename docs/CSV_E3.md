@@ -1,11 +1,25 @@
 # Integración de CSV y despacho para E3
 
-Desde Movimientos se envía el archivo original como cuerpo `text/csv` a `POST /movements/import-csv`, con el mismo JWT de la sesión. Se limita a 1 MiB en cliente y servidor; el backend valida todos los campos, roles, orden de filas y stock acumulado y revierte el archivo si hay errores. El cliente conserva el manejo de sesión vencida. Después de un éxito se invalidan las consultas para actualizar historial, stock y métricas.
+## Importación CSV de movimientos (REQ-18, RN-19)
 
-La interfaz enumera IDs de insumos y explica las seis columnas `insumo,cantidad,unidad,tipo,fecha,observacion`. No crea insumos ni realiza exportaciones. La fila 1 es la primera fila de datos; el encabezado no se cuenta. Se muestran todos los errores recuperables. Una carga repetida ya aplicada confirma el resultado sin duplicar movimientos.
+En Movimientos, la tarjeta «Importar desde CSV» (`src/components/CsvImport.tsx`) lee el archivo en el navegador y muestra una vista previa antes de enviarlo:
 
-El despacho fijo se edita en Proveedores y se muestra separado del subtotal en Precios y Órdenes. El backend decide la recomendación y congela los importes. Una modificación antes de aprobar devuelve `STALE_SHIPPING`, traducido en la interfaz.
+- Exige UTF-8 (con BOM opcional). Un archivo en otra codificación —p. ej. el «CSV (delimitado por comas)» de Excel en Windows-1252— se rechaza con instrucciones para guardarlo como «CSV UTF-8». Máximo 1 MiB y 1000 filas, como el backend.
+- Verifica el encabezado `insumo,cantidad,unidad,tipo,fecha,observacion` (separador coma o punto y coma) y muestra cada fila con el nombre del insumo según su ID. Las reglas de cada fila las valida solo el backend.
+- Ofrece una plantilla con el ID del insumo seleccionado y lista los IDs de todos los insumos.
 
-Validación local: `npm test` (25 aprobados), `npm run build`, `npm run lint`; Chromium real contra FastAPI y PostgreSQL, sin mocks, verificó éxito 5→6,5 kg, reintento, dos errores y stock conservado; además creó un proveedor con despacho de CLP 2.990 y comprobó el importe en la tabla. A 360 px no hubo desborde horizontal en Movimientos. No se acreditaron todos los navegadores ni producción.
+Al importar se envía el texto a `POST /movements/import-csv` con `Content-Type: text/csv` y el JWT de la sesión (`useImportMovementsCsv` en `src/api/queries.ts`). La importación es de todo o nada: si el backend responde `CSV_REJECTED`, se listan las filas con error (la fila 1 es la primera de datos; la fila 0 es el archivo) con su contenido y el motivo traducido, y se marcan en la vista previa (`csvRowErrors` en `src/api/errors.ts`). Una carga repetida ya aplicada informa que no se registraron movimientos nuevos. Tras un éxito se invalidan las consultas de inventario, por lo que se actualizan historial, stock, alertas y métricas.
 
-El snapshot JSON de OpenAPI procede de la aplicación local actual. Se conservaron los tipos generados anteriores y se extendieron sus alias para los campos de despacho, sin descargar un generador nuevo. Regenerar `schema.d.ts` completo con el script existente cuando esté disponible la herramienta; el cliente CSV tiene tipos explícitos. No se alteraron dependencias del frontend.
+Cada intento muestra una notificación flotante (`src/components/Toasts.tsx`): éxito, archivo ya importado o error. Los errores quedan visibles hasta cerrarlos.
+
+Una fecha `AAAA-MM-DD` se registra a las 00:00 de Chile: si el insumo se registró ese mismo día, el backend la rechaza por ser anterior al stock inicial; en ese caso hay que usar fecha y hora con zona.
+
+## Despacho fijo por proveedor (RN-10)
+
+El despacho se edita en Proveedores (0 = gratis). Precios muestra por separado formatos, despacho y total de cada proveedor; la orden sugerida, formatos, despacho y total. El backend calcula la recomendación con el total y congela los importes en la sugerencia. Si el despacho cambia antes de aprobar, el backend responde `STALE_SHIPPING` y la interfaz pide generar una sugerencia nueva. Las sugerencias y órdenes anteriores al despacho no lo traen y se muestran como «No incluido».
+
+## Contrato y validación
+
+`openapi/openapi.json` y `src/api/schema.d.ts` se regeneraron con `npm run api:types` desde el contrato del backend desplegado, que ya incluye despacho e importación CSV.
+
+Pruebas en `src/api/client.test.ts` (despacho, `STALE_SHIPPING`, importación todo o nada, reintento, encabezado) y `src/lib/csv.test.ts` (lectura del CSV, UTF-8, plantilla), contra el backend simulado con MSW. Está pendiente la verificación contra el backend real en Render.
