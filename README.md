@@ -1,5 +1,7 @@
 # StockSmart — frontend
 
+Entrega E3: Movimientos incorpora importación CSV de todo o nada con errores por fila y control de reintentos. Proveedores, Precios y Órdenes muestran el despacho fijo integrado en el backend. Contrato y validación: [docs/CSV_E3.md](docs/CSV_E3.md). Su disponibilidad operativa requiere desplegar también el backend compatible y sus migraciones.
+
 Frontend web de StockSmart (React + TypeScript + Vite). Cómo funciona por dentro y cómo se conecta con el
 backend, pantalla por pantalla: [docs/FRONTEND.md](docs/FRONTEND.md).
 
