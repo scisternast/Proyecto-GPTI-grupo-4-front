@@ -146,8 +146,9 @@ export function MetricsPage() {
           <h2>Ahorro por orden aprobada</h2>
           {m && <SavingsTable metrics={m} suggestions={suggestions.data ?? []} />}
           <p className="muted small">
-            El ahorro se calcula solo con el precio del producto (IVA incluido, sin despacho), usando los precios
-            vigentes al momento de generar cada sugerencia.
+            El ahorro compara el costo total de cada orden (formatos con IVA incluido más el despacho fijo del
+            proveedor) con la siguiente mejor opción, usando los precios vigentes al generar cada sugerencia. Las
+            órdenes generadas antes de incorporar el despacho no lo incluyen.
           </p>
         </div>
       </div>

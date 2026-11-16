@@ -1407,6 +1407,219 @@ tr.struck td.sticky-action {
   text-decoration: none;
 }
 
+/* --- Importación CSV de movimientos --- */
+
+.csv-import .card-header {
+  margin-bottom: 0;
+}
+
+.file-pick input[type='file'] {
+  height: auto;
+  padding: 10px 12px;
+  border-style: dashed;
+  background: var(--surface-alt);
+  cursor: pointer;
+  font-size: 0.87rem;
+}
+
+.file-pick input[type='file']::file-selector-button {
+  font: inherit;
+  font-weight: 600;
+  margin-right: 12px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.csv-format {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.csv-format summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.93rem;
+}
+
+.csv-format ul {
+  margin: 0.5rem 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1.45;
+}
+
+.csv-format p {
+  margin: 0.5rem 0 0;
+}
+
+.csv-preview p {
+  margin: 0 0 0.4rem;
+}
+
+tr.error-row td,
+tbody tr.error-row:hover td {
+  background: var(--danger-bg);
+}
+
+.csv-errors {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+
+.csv-errors p {
+  margin: 0 0 0.4rem;
+}
+
+.csv-errors ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.csv-errors .muted {
+  color: var(--danger-text);
+  opacity: 0.8;
+}
+
+/* --- Notificaciones (toasts) --- */
+
+.toasts {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(400px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 12px 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--text-2);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 14%);
+  line-height: 1.45;
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  font-size: 0.87rem;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--text-2);
+}
+
+.toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-body strong {
+  display: block;
+  font-size: 0.97rem;
+}
+
+.toast-body p {
+  margin: 2px 0 0;
+  font-size: 0.87rem;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.toast-success {
+  border-left-color: var(--ok);
+}
+
+.toast-success .toast-icon {
+  background: var(--ok);
+}
+
+.toast-success strong {
+  color: var(--ok);
+}
+
+.toast-error {
+  border-left-color: var(--danger);
+  background: #fffafa;
+}
+
+.toast-error .toast-icon {
+  background: var(--danger);
+}
+
+.toast-error strong {
+  color: var(--danger-text);
+}
+
+button.toast-close,
+button.toast-close:hover {
+  flex-shrink: 0;
+  min-height: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+button.toast-close:hover {
+  background: var(--divider);
+  color: var(--text);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .toasts {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
 /* --- Gráfico de proyección --- */
 
 .chart {

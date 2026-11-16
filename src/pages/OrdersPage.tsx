@@ -23,10 +23,11 @@ import { useUser } from '../auth/sessionContext'
 import { Badge, ErrorMessage, Loading, PageHeader } from '../components/Feedback'
 import { ItemSelect } from '../components/ItemSelect'
 import { dateInputToOccurredAt, dayKey, formatCLP, formatPercent, formatQuantity, formatShortDate, todayKey, UNIT_LABEL } from '../lib/format'
+import { shippingLabel } from '../lib/procurement'
 import { useSelectedItem } from '../state/useSelectedItem'
 
 const DAY = 86_400_000
-const STALE = ['STALE_SUGGESTION', 'STALE_PRICES', 'STALE_FORMAT']
+const STALE = ['STALE_SUGGESTION', 'STALE_PRICES', 'STALE_FORMAT', 'STALE_SHIPPING']
 
 /** Datos para mostrar un producto: proveedor, plazo y si es de peso variable. */
 interface Catalog {
@@ -140,7 +141,11 @@ function OrderCard({ item, order, suggestion, catalog }: OrderCardProps) {
   const supplier = catalog.supplier(productId)
   const purchased = order?.purchased_qty ?? suggestion?.purchased_qty ?? null
   const total = order?.total_clp ?? suggestion?.total_clp ?? null
-  const unitPrice = purchased && total ? Number(total) / Number(purchased) : null
+  // RN-10: costo de formatos y despacho por separado. Las órdenes anteriores al despacho no los traen
+  // (null): su total era solo formatos.
+  const shipping = order?.shipping_cost_clp ?? suggestion?.shipping_cost_clp ?? null
+  const subtotal = order?.subtotal_clp ?? suggestion?.subtotal_clp ?? (shipping === null ? total : null)
+  const unitPrice = purchased && subtotal ? Number(subtotal) / Number(purchased) : null
   const lead = supplier?.lead_time_days ?? null
   const expected =
     order?.expected_at ?? (suggestion && lead !== null ? new Date(Date.parse(suggestion.created_at) + lead * DAY).toISOString() : null)
@@ -185,15 +190,23 @@ function OrderCard({ item, order, suggestion, catalog }: OrderCardProps) {
           </dd>
         </div>
         <div>
+          <dt>Formatos (IVA incl.)</dt>
+          <dd className="mono">{formatCLP(subtotal)}</dd>
+        </div>
+        <div>
+          <dt>Despacho</dt>
+          <dd className="mono">{shipping === null ? <span className="muted">No incluido</span> : shippingLabel(shipping, formatCLP)}</dd>
+        </div>
+        <div>
+          <dt>Total estimado</dt>
+          <dd className="mono big">{formatCLP(total)}</dd>
+        </div>
+        <div>
           <dt>Entrega estimada</dt>
           <dd>
             {formatShortDate(expected)}
             {lead !== null && ` (${lead} días)`}
           </dd>
-        </div>
-        <div>
-          <dt>Total estimado (IVA incl.)</dt>
-          <dd className="mono big">{formatCLP(total)}</dd>
         </div>
         <div>
           <dt>Ahorro vs. siguiente opción</dt>
@@ -253,7 +266,14 @@ function explanation(s: Suggestion, unit: string, supplierName: string | undefin
   }
   if (Number(s.in_transit_qty) > 0) parts.push(`Descuenta ${formatQuantity(s.in_transit_qty, unit)} ya en tránsito.`)
   if (s.packs) parts.push('La cantidad ya está redondeada a formatos completos.')
-  if (supplierName) parts.push(`${supplierName} tiene el menor costo entre los precios vigentes (IVA incluido, sin despacho).`)
+  if (supplierName)
+    parts.push(
+      s.shipping_cost_clp !== null
+        ? `${supplierName} tiene el menor costo total entre los precios vigentes: formatos con IVA incluido más su despacho${
+            Number(s.shipping_cost_clp) > 0 ? ` de ${formatCLP(s.shipping_cost_clp)}` : ' (gratis)'
+          }, que se suma una vez por orden.`
+        : `${supplierName} tiene el menor costo entre los precios vigentes (IVA incluido, sin despacho).`,
+    )
   return parts.join(' ')
 }
 

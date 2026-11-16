@@ -120,6 +120,26 @@ export function useCreateMovement() {
   })
 }
 
+/**
+ * Importa movimientos desde un CSV (POST /movements/import-csv). Se envía el archivo tal cual con
+ * `Content-Type: text/csv`, sin multipart. Es todo o nada (RN-19): si una fila falla, el backend no
+ * registra ninguna y responde CSV_REJECTED con los errores por fila (ver `csvRowErrors`).
+ */
+export function useImportMovementsCsv() {
+  const invalidate = useInvalidateInventory()
+  return useMutation({
+    mutationFn: (csv: string) =>
+      unwrap(
+        api.POST('/movements/import-csv', {
+          body: csv,
+          bodySerializer: (body) => body,
+          headers: { 'Content-Type': 'text/csv' },
+        }),
+      ),
+    onSuccess: invalidate,
+  })
+}
+
 export function useReverseMovement() {
   const invalidate = useInvalidateInventory()
   return useMutation({

@@ -1,4 +1,4 @@
-import type { ErrorBody } from './types'
+import type { CsvRowError, ErrorBody } from './types'
 
 // El backend responde los errores en inglés; el frontend los traduce por `code`.
 const MESSAGES: Record<string, string> = {
@@ -47,6 +47,15 @@ const MESSAGES: Record<string, string> = {
   STALE_SUGGESTION: 'El inventario cambió desde que se generó la sugerencia: genera una nueva.',
   STALE_PRICES: 'Los precios cambiaron o vencieron desde que se generó la sugerencia: genera una nueva.',
   STALE_FORMAT: 'Cambió el mínimo de compra del producto: genera una nueva sugerencia.',
+  STALE_SHIPPING: 'Cambió el costo de despacho del proveedor desde que se generó la sugerencia: genera una nueva.',
+  // Importación CSV de movimientos (RN-19: todo o nada)
+  CSV_REJECTED: 'No se registró ningún movimiento del archivo: corrige las filas indicadas y vuelve a subirlo.',
+  CSV_CONTENT_TYPE: 'El archivo debe ser un CSV.',
+  CSV_TOO_LARGE: 'El archivo supera el máximo de 1 MiB.',
+  CSV_TOO_MANY_ROWS: 'El archivo supera el máximo de 1000 filas de movimientos.',
+  CSV_HEADER: 'El encabezado debe ser exactamente: insumo,cantidad,unidad,tipo,fecha,observacion.',
+  CSV_EMPTY: 'El archivo no contiene movimientos.',
+  CSV_INVALID: 'El archivo no es un CSV válido en UTF-8.',
   // Generales
   DATABASE_UNAVAILABLE: 'La base de datos no está disponible en este momento. Intenta de nuevo en unos minutos.',
   HTTP_404: 'La ruta no existe en el backend.',
@@ -91,6 +100,21 @@ export class ApiError extends Error {
     this.code = code
     this.body = body
   }
+}
+
+/** Mensaje en español para un código del backend; si no está traducido, el mensaje que envió el backend. */
+export function messageForCode(code: string, fallback: string): string {
+  return MESSAGES[code] ?? fallback
+}
+
+/**
+ * Errores por fila de una importación CSV rechazada (HTTP 413, 415 o 422 con `error.code = CSV_REJECTED`).
+ * Su `details` no son ValidationIssue sino `{row, code, message}`; `null` si el error es de otro tipo.
+ */
+export function csvRowErrors(error: unknown): CsvRowError[] | null {
+  if (!(error instanceof ApiError) || error.code !== 'CSV_REJECTED') return null
+  const details = error.body?.error?.details as unknown
+  return Array.isArray(details) ? (details as CsvRowError[]) : []
 }
 
 /** Mensaje en español para mostrar al usuario a partir de cualquier error. */

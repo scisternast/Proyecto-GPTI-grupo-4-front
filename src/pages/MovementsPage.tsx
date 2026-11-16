@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ItemState } from '../api/types'
 import { useCounts, useCreateMovement, useItem, useMovements, useOrders, useReverseMovement } from '../api/queries'
 import { Badge, ErrorMessage, Loading, PageHeader } from '../components/Feedback'
+import { CsvImport } from '../components/CsvImport'
 import { ItemSelect } from '../components/ItemSelect'
 import {
   dateInputToOccurredAt,
@@ -45,7 +46,10 @@ export function MovementsPage() {
       />
       {item.error && <ErrorMessage error={item.error} />}
       <div className="split split-history">
-        <MovementForm item={item.data} />
+        <div className="stack">
+          <MovementForm item={item.data} />
+          <CsvImport item={item.data} />
+        </div>
         {item.data ? <History item={item.data} /> : <div className="card">{id !== null && <Loading />}</div>}
       </div>
     </section>

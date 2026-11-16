@@ -18,7 +18,7 @@ import type {
   SupplierUpdate,
 } from '../api/types'
 import { Badge, ErrorMessage, Loading, PageHeader } from '../components/Feedback'
-import { formatDateTime, formatQuantity, UNIT_LABEL } from '../lib/format'
+import { formatCLP, formatDateTime, formatQuantity, UNIT_LABEL } from '../lib/format'
 import { RUN_STATUS } from '../lib/labels'
 import { ADAPTERS, runResults, scrapeErrorMessage } from '../lib/procurement'
 
@@ -55,6 +55,7 @@ export function SuppliersPage() {
                   <th>Proveedor</th>
                   <th>Fuente de precios (URL)</th>
                   <th className="num">Entrega</th>
+                  <th className="num">Despacho</th>
                   <th className="num">Productos</th>
                   <th>Último scraping</th>
                   <th />
@@ -80,6 +81,9 @@ export function SuppliersPage() {
                       )}
                     </td>
                     <td className="num">{supplier.lead_time_days} días</td>
+                    <td className="num">
+                      {Number(supplier.shipping_cost_clp) > 0 ? formatCLP(supplier.shipping_cost_clp) : <span className="muted">Gratis</span>}
+                    </td>
                     <td className="num">{products.filter((p) => p.supplier_id === supplier.id && p.is_active).length}</td>
                     <td>
                       <LastRun run={runsBySupplier.get(supplier.id)?.[0]} />
@@ -212,6 +216,8 @@ function SupplierForm({
   const save = useSaveSupplier()
   const [name, setName] = useState(supplier?.name ?? '')
   const [leadTime, setLeadTime] = useState(supplier ? String(supplier.lead_time_days) : '')
+  // Despacho fijo por orden en pesos (RN-10). Vacío o 0 = despacho gratis.
+  const [shipping, setShipping] = useState(supplier ? String(Math.round(Number(supplier.shipping_cost_clp))) : '0')
   const [url, setUrl] = useState(supplier?.price_source_url ?? '')
   const [adapter, setAdapter] = useState<Adapter | ''>((supplier?.adapter as Adapter | null) ?? '')
   const [active, setActive] = useState(supplier?.is_active ?? true)
@@ -224,6 +230,7 @@ function SupplierForm({
         const values = {
           name: name.trim(),
           lead_time_days: Number(leadTime),
+          shipping_cost_clp: String(Number(shipping || 0)),
           price_source_url: url.trim() || null,
           adapter: adapter || null,
           is_active: active,
@@ -235,7 +242,10 @@ function SupplierForm({
         // PATCH solo con lo que cambió (un cuerpo vacío responde 422 EMPTY_UPDATE).
         const update: SupplierUpdate = {}
         for (const key of Object.keys(values) as (keyof typeof values)[]) {
-          if (values[key] !== supplier[key]) Object.assign(update, { [key]: values[key] })
+          // El despacho llega como decimal («7000.000000»): se compara como número.
+          const changed =
+            key === 'shipping_cost_clp' ? Number(values[key]) !== Number(supplier[key]) : values[key] !== supplier[key]
+          if (changed) Object.assign(update, { [key]: values[key] })
         }
         if (Object.keys(update).length === 0) onDone(supplier.id)
         else save.mutate({ id: supplier.id, update }, { onSuccess: (saved) => onDone(saved.id) })
@@ -250,6 +260,18 @@ function SupplierForm({
         <label>
           Entrega (días) *
           <input required type="number" min={0} step={1} value={leadTime} onChange={(event) => setLeadTime(event.target.value)} />
+        </label>
+        <label>
+          Despacho por orden ($) *
+          <input
+            required
+            type="number"
+            min={0}
+            step={1}
+            inputMode="numeric"
+            value={shipping}
+            onChange={(event) => setShipping(event.target.value)}
+          />
         </label>
       </div>
       <label>
@@ -275,7 +297,8 @@ function SupplierForm({
       </div>
       <p className="muted small">
         El tiempo de entrega se usa para anticipar la alerta de reposición, de modo que la compra llegue antes del
-        quiebre. Sin adaptador no se obtienen precios automáticamente.
+        quiebre. El despacho es un costo fijo que se suma una sola vez por orden al comparar
+        proveedores; usa 0 si el despacho es gratis. Sin adaptador no se obtienen precios automáticamente.
       </p>
       {save.error && <ErrorMessage error={save.error} />}
       <div className="actions">
